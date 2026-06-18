@@ -3,19 +3,25 @@ import Bottombar from "./Bottombar";
 import LLmResponseBox from "./LLmResponseBox";
 import UserResponseBox from "./UserResponseBox";
 
-function Chatbox() {
+function Chatbox(session) {
     const [responses, setResponses] = useState([]);
-
+    const [currentSession, setCurrentSession] = useState(session.session);
+    console.log(session.session);
+    // Handles submiting a prompt
     function handleResponse(data) {
         console.log(data);
-        setResponses((pr) => [...pr, data]);
+        setResponses([...responses, data]);
     }
 
+    // Loads Session (currently only loading default)
     useEffect(() => {
-        console.log("runs")
+        setResponses([])
+        console.log("runs");
         async function loadSession() {
+            console.log("this is session");
+            console.log(session.session);
             const res = await fetch(
-                "http://localhost:8000/api/loadSession?session=default",
+                `http://localhost:8000/api/loadSession?session=${session.session}`,
             );
             const result = await res.json();
             console.log(result);
@@ -25,11 +31,11 @@ function Chatbox() {
                     response: result[i + 1].text,
                 };
 
-                handleResponse(set);
+                setResponses((pr) => [...pr, set]);
             }
         }
         loadSession();
-    }, []);
+    }, [session]);
 
     return (
         <div className="bg-[#202020] w-full h-full min-h-screen text-white flex flex-col items-center text-2xl relative">
@@ -59,7 +65,7 @@ function Chatbox() {
                 )}
             </div>
 
-            <Bottombar response={handleResponse} />
+            <Bottombar response={handleResponse} session={session.session} />
         </div>
     );
 }

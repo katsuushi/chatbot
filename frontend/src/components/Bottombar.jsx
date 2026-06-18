@@ -1,8 +1,9 @@
 import { useState } from "react";
 
-function Bottombar({ response }) {
+function Bottombar({ response, session }) {
     const [prompt, setPrompt] = useState("");
-
+    console.log("below session from bot")
+    console.log(session)
     async function promptSubmit() {
         response({
             prompt: prompt,
@@ -19,7 +20,7 @@ function Bottombar({ response }) {
                 },
                 body: JSON.stringify({
                     prompt: prompt,
-                    session: "default",
+                    session: session,
                 }),
             },
         );

@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 
 function LLmResponseBox(text) {
     const [response, setResponse] = useState("");
-    console.log(text);
+    
 
     // temporarily there's no animation for waiting for the response
     return (
