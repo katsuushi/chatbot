@@ -61,7 +61,7 @@ async def promptFlashLite(
     db: AsyncSession = Depends(get_asyncsession),
 ):  # user: User = Depends(current_active_user)
     res = await db.execute(
-        select(Session).where(Session.data[prompt.session].isnot(None))
+        select(Session).where(Session.sessionKey == prompt.session)
     )
     rows = res.scalar_one_or_none()
     if rows == None:
@@ -73,12 +73,15 @@ async def promptFlashLite(
         )
 
         chatsession = Session(
-            data={prompt.session: {"history": []}}, owner_id=uuid.uuid4()
+            data={prompt.session: {"history": []}},
+            sessionKey=prompt.session,
+            owner_id=uuid.uuid4(),
         )  # user.id
         db.add(chatsession)
         rows = chatsession
     else:
         history = json.loads(rows.data[prompt.session]["history"])
+
         chat = gemini_client.aio.chats.create(
             model="gemini-2.5-flash-lite",
             config={
@@ -114,8 +117,10 @@ async def loadSession(
     db: AsyncSession = Depends(get_asyncsession),
     # user: User = Depends(current_active_user),
 ):
-    result = await db.execute(select(Session).where(Session.data[session].isnot(None)))
+    result = await db.execute(select(Session).where(Session.sessionKey == session))
+
     row = result.scalar_one_or_none()
+    print(row)
     if row == None:
         raise HTTPException(status_code=404, detail="Problem Fetching the Session")
         # elif row.owner_id != user.id:

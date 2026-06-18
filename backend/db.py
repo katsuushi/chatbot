@@ -28,7 +28,8 @@ class Session(Base):
     data = Column(MutableDict.as_mutable(JSON))
     owner = relationship("User", back_populates="sessions")
     owner_id = Column(UUID(as_uuid=True), ForeignKey("user.id"), nullable=False) 
-    
+    sessionKey = Column(String(25))
+
 dbengine = create_async_engine(DATABASE_URL)
 asyncsessionmaker = async_sessionmaker(dbengine, expire_on_commit=False)
 async def create_db_and_tables():
