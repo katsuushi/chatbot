@@ -20,14 +20,13 @@ function Leftbar({ sessionKey }) {
             <div className="border border-gray-500 h-[20%] p-4">
                 <h1 className="text-3xl text-white">ChatBot</h1>
             </div>
-            <div className="border h-[67%]"></div>
-            <div className="border border-gray-500 text-white h-[13%]">
+            <div className="border h-[67%] text-white text-3xl flex flex-col justify-evenly items-center">
                 <button onClick={handle1}>Default</button>
                 <button onClick={handle2}>Default2</button>
             </div>
+            <div className="border border-gray-500 text-white h-[13%]"></div>
         </div>
     );
 }
 
 export default Leftbar;
-

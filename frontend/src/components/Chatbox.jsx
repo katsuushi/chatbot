@@ -5,7 +5,9 @@ import UserResponseBox from "./UserResponseBox";
 
 function Chatbox(session) {
     const [responses, setResponses] = useState([]);
+    const [prevResponses, setPrevResponses] = useState([]);
     const [currentSession, setCurrentSession] = useState(session.session);
+    const [loading, setLoading] = useState(true);
     console.log(session.session);
     // Handles submiting a prompt
     function handleResponse(data) {
@@ -15,7 +17,9 @@ function Chatbox(session) {
 
     // Loads Session (currently only loading default)
     useEffect(() => {
-        setResponses([])
+        setLoading(true);
+        setPrevResponses(responses);
+        setResponses([]);
         console.log("runs");
         async function loadSession() {
             console.log("this is session");
@@ -32,6 +36,10 @@ function Chatbox(session) {
                 };
 
                 setResponses((pr) => [...pr, set]);
+                const timer = setTimeout(() => {
+                    setLoading(false);
+                }, 10);
+                return () => clearTimeout(timer);
             }
         }
         loadSession();
@@ -44,7 +52,14 @@ function Chatbox(session) {
                 <h1 className="text-2xl text-gray-400!">put history here</h1>
             </div>
             <div className="w-full min-h-[77vh] p-16 px-2 lg:px-12 2xl:px-128 flex flex-col gap-y-8 mb-64 mt-24">
-                {responses.length === 0 ? (
+                {loading ? (
+                    prevResponses.map((res, i) => (
+                        <div key={i}>
+                            <UserResponseBox text={res.prompt} />
+                            <LLmResponseBox text={res.response} />
+                        </div>
+                    ))
+                ) : responses.length === 0 ? (
                     <>
                         <div className="flex justify-center items-center h-[66vh]">
                             <h1>
