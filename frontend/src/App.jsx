@@ -1,15 +1,23 @@
-import { useState } from 'react'
-import './App.css'
-import Chat from "./pages/Chat"
-
+import { useState } from "react";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import "./App.css";
+import Chat from "./pages/Chat";
+import Login from "./pages/Login";
 
 function App() {
+    return (
 
-  return (
-    <>
-      <Chat></Chat>
-    </>
-  )
+        <BrowserRouter>
+            <Routes>
+
+                <Route path="/" element={<Chat></Chat>}></Route>
+                <Route path="/login" element={<Login></Login>}></Route>
+
+            </Routes>
+
+        </BrowserRouter>
+
+    )
 }
 
-export default App
+export default App;
