@@ -60,9 +60,7 @@ async def promptFlashLite(
     prompt: Prompt,
     db: AsyncSession = Depends(get_asyncsession),
 ):  # user: User = Depends(current_active_user)
-    res = await db.execute(
-        select(Session).where(Session.sessionKey == prompt.session)
-    )
+    res = await db.execute(select(Session).where(Session.sessionKey == prompt.session))
     rows = res.scalar_one_or_none()
     if rows == None:
         chat = gemini_client.aio.chats.create(
@@ -77,6 +75,7 @@ async def promptFlashLite(
             sessionKey=prompt.session,
             owner_id=uuid.uuid4(),
         )  # user.id
+       
         db.add(chatsession)
         rows = chatsession
     else:
