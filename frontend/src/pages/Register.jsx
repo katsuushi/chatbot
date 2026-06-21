@@ -1,5 +1,33 @@
 import { Link } from "react-router-dom";
+import { useState } from "react";
 function Register() {
+    const [data, setData] = useState({ em: "", ps: "" , cfps: ""});
+
+    async function handleRegister() {
+        console.log(data);
+        if (data.ps != data.cfps) {
+            console.log("Passwords do not match.");
+            return "Passwords do not match.";
+        }
+
+        const call = await fetch("http://localhost:8000/auth/register", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                email: data.em,
+                password: data.ps,
+                is_active: true,
+                is_superuser: false,
+                is_verified: false,
+            }),
+        });
+
+        const res = await call.json();
+        console.log(res);
+    }
+
     return (
         <div className="bg-[#202020] w-full h-[100vh] flex flex-col justify-center items-center">
             <div>
@@ -21,21 +49,33 @@ function Register() {
                         <input
                             type="text"
                             className="rounded-lg bg-[#404040] border-0 outline-none ml-4 p-2 px-4 w-128 my-4"
+                            onChange={(val) =>
+                                setData({ ...data, em: val.target.value})
+                            }
                         />
 
                         <input
                             type="text"
                             className="rounded-lg bg-[#404040] border-0 outline-none ml-4 p-2 px-4 w-128 my-4"
+                            onChange={(val) =>
+                                setData({ ...data, ps: val.target.value })
+                            }
                         />
                         <input
                             type="text"
                             className="rounded-lg bg-[#404040] border-0 outline-none ml-4 p-2 px-4 w-128 my-4"
+                            onChange={(val) =>
+                                setData({ ...data, cfps: val.target.value })
+                            }
                         />
                     </div>
                 </div>
 
                 <div className="my-8 text-white pl-16">
-                    <button className="bg-[#fff] text-[#000]! hover:bg-[#ccc]! hover:cursor-pointer active:bg-[#aaa]! rounded-3xl outline-none border-0 text-[20px] px-4 py-2 font-bold">
+                    <button
+                        onClick={handleRegister}
+                        className="bg-[#fff] text-[#000]! hover:bg-[#ccc]! hover:cursor-pointer active:bg-[#aaa]! rounded-3xl outline-none border-0 text-[20px] px-4 py-2 font-bold"
+                    >
                         Sign up
                     </button>
                     <p className="text-[#aaa]! text-xl my-8">

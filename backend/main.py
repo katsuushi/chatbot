@@ -11,7 +11,7 @@ from sqlalchemy import select
 
 from db import AsyncSession, Session, User, create_db_and_tables, get_asyncsession
 from schemas import UserCreate, UserRead, UserUpdate, Prompt
-from users import auth_backend, current_active_user, fastapi_users
+from users import cookie_backend, bearer_backend, current_active_user, fastapi_users
 import uuid
 
 load_dotenv()
@@ -36,8 +36,13 @@ app.add_middleware(
 )
 
 app.include_router(
-    fastapi_users.get_auth_router(auth_backend), prefix="/auth/jwt", tags=["auth"]
+    fastapi_users.get_auth_router(cookie_backend), prefix="/auth/cookie", tags=["auth"]
 )
+
+app.include_router(
+    fastapi_users.get_auth_router(bearer_backend), prefix="/auth/jwt", tags=["auth"]
+)
+
 app.include_router(
     fastapi_users.get_register_router(UserRead, UserCreate),
     prefix="/auth",
@@ -59,7 +64,8 @@ def pong():
 async def promptFlashLite(
     prompt: Prompt,
     db: AsyncSession = Depends(get_asyncsession),
-):  # user: User = Depends(current_active_user)
+    user: User = Depends(current_active_user),
+):
     res = await db.execute(select(Session).where(Session.sessionKey == prompt.session))
     rows = res.scalar_one_or_none()
     if rows == None:
@@ -73,9 +79,9 @@ async def promptFlashLite(
         chatsession = Session(
             data={prompt.session: {"history": []}},
             sessionKey=prompt.session,
-            owner_id=uuid.uuid4(),
-        )  # user.id
-       
+            owner_id=user.id,
+        )
+
         db.add(chatsession)
         rows = chatsession
     else:
@@ -114,7 +120,7 @@ async def promptFlashLite(
 async def loadSession(
     session: str = "default",
     db: AsyncSession = Depends(get_asyncsession),
-    # user: User = Depends(current_active_user),
+    user: User = Depends(current_active_user),
 ):
     result = await db.execute(select(Session).where(Session.sessionKey == session))
 
@@ -122,20 +128,20 @@ async def loadSession(
     print(row)
     if row == None:
         raise HTTPException(status_code=404, detail="Problem Fetching the Session")
-        # elif row.owner_id != user.id:
-        # raise HTTPException(
-        #    status_code=403, detail="You are not the owner of the session."
-        # )
+    elif row.owner_id != user.id:
+        raise HTTPException(
+            status_code=403, detail="You are not the owner of the session."
+        )
     else:
         history = json.loads(row.data[session]["history"])
         return history
 
 
 @app.delete("/api/deleteSession")
-async def deleteSession(
+async def delizeeteSession(
     session: str = "default",
     db: AsyncSession = Depends(get_asyncsession),
-    # user: User = Depends(current_active_user),
+    user: User = Depends(current_active_user),
 ):
     result = await db.execute(select(Session).where(Session.data[session].isnot(None)))
     row = result.scalar_one_or_none()
@@ -143,11 +149,16 @@ async def deleteSession(
         raise HTTPException(
             status_code=404, detail="Couldn't find the selected session."
         )
-        # elif row.owner_id != user.id:
-        # raise HTTPException(
-        #    status_code=403, detail="You are not the owner of the session."
-        # )
+    elif row.owner_id != user.id:
+        raise HTTPException(
+            status_code=403, detail="You are not the owner of the session."
+        )
     else:
         await db.delete(row)
         await db.commit()
         return "200"
+
+
+@app.get("/api/testUser")
+async def testUser(user: User = Depends(current_active_user)):
+    return {"message": "Data", "username": user.email, "id": user.id}

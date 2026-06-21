@@ -38,6 +38,7 @@ htmlcov/
 
 # FastAPI / uvicorn
 *.log
+local
 
 # Packaging
 build/
