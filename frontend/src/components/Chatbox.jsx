@@ -15,6 +15,15 @@ function Chatbox(session) {
         setResponses([...responses, data]);
     }
 
+    function debug1() {
+        console.log(responses);
+    }
+
+    function timerReset(timer) {
+        setLoading(false);
+        clearTimeout(timer);
+    }
+
     // Loads Session (currently only loading default)
     useEffect(() => {
         setLoading(true);
@@ -26,9 +35,13 @@ function Chatbox(session) {
             console.log(session.session);
             const res = await fetch(
                 `http://localhost:8000/api/loadSession?session=${session.session}`,
+                {
+                    credentials: "include",
+                },
             );
             const result = await res.json();
             console.log(result);
+            console.log(result.length);
             for (let i = 0; i < result.length; i = i + 2) {
                 const set = {
                     prompt: result[i].text,
@@ -37,9 +50,8 @@ function Chatbox(session) {
 
                 setResponses((pr) => [...pr, set]);
                 const timer = setTimeout(() => {
-                    setLoading(false);
+                    timerReset(timer);
                 }, 10);
-                return () => clearTimeout(timer);
             }
         }
         loadSession();
@@ -50,6 +62,9 @@ function Chatbox(session) {
             <div className="w-full left-80 lg:left-128 min-h-[8vh] bg-black flex items-center fixed right-0">
                 <h1 className="text-3xl text-white px-8">ChatBot</h1>{" "}
                 <h1 className="text-2xl text-gray-400!">put history here</h1>
+                <button onClick={debug1} className="">
+                    console.log responses
+                </button>
             </div>
             <div className="w-full min-h-[77vh] p-16 px-2 lg:px-12 2xl:px-128 flex flex-col gap-y-8 mb-64 mt-24">
                 {loading ? (

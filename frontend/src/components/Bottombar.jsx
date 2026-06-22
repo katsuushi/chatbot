@@ -22,6 +22,7 @@ function Bottombar({ response, session }) {
                     prompt: prompt,
                     session: session,
                 }),
+                credentials: "include"
             },
         );
         const data = await result.json();

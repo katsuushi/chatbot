@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 function Login() {
     const [data, setData] = useState({ em: "", ps: "" });
@@ -12,7 +13,11 @@ function Login() {
             body: new URLSearchParams({ username: data.em, password: data.ps }),
             credentials: "include",
         });
-        if (!call.ok) throw new Error("Login failed");
+        if (!call.ok) {
+            throw new Error("Login failed");
+        } else {
+            return <Navigate to="/" replace />;
+        }
     }
 
     return (
