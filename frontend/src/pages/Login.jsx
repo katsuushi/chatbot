@@ -4,6 +4,8 @@ import { useState } from "react";
 function Login() {
     const [data, setData] = useState({ em: "", ps: "" });
 
+    const navigate = useNavigate()
+
     async function handleLogin() {
         const call = await fetch("http://localhost:8000/auth/cookie/login", {
             method: "POST",
@@ -16,7 +18,7 @@ function Login() {
         if (!call.ok) {
             throw new Error("Login failed");
         } else {
-            return <Navigate to="/" replace />;
+            return navigate("/", {replace: true});
         }
     }
 

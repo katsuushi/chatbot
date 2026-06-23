@@ -1,7 +1,10 @@
 import { useState, useEffect } from "react";
-
+import { useNavigate } from "react-router-dom";
+import HistorySession from "./HistorySession.jsx";
 function Leftbar({ sessionKey }) {
     const [sessions, setSessions] = useState([]);
+
+    const navigate = useNavigate();
 
     function handle1() {
         sessionKey("default");
@@ -11,20 +14,36 @@ function Leftbar({ sessionKey }) {
         sessionKey("notdefault");
     }
 
+    async function handleLogout() {
+        const call = await fetch("http://localhost:8000/auth/cookie/logout", {
+            method: "POST",
+            credentials: "include",
+        });
+        return navigate("/login", { replace: true });
+    }
+
     // UseEffect which gets user's sessions and stores them into "sessions"
     // Each session has its session name, then on clicking one of the sessions a handleSession function
     // passses the session name into the props session which goes into Chat, and then into Chatbox which then loads with a useEffect
 
     return (
-        <div className="min-h-screen sm:min-w-80 lg:min-w-lg flex-col fixed left-0 top-0 bottom-0 bg-black">
+        <div className="min-h-screen sm:min-w-80 lg:min-w-lg max-w-lg  flex-col fixed left-0 top-0 bottom-0 bg-black">
             <div className="border border-gray-500 h-[20%] p-4">
                 <h1 className="text-3xl text-white">ChatBot</h1>
             </div>
-            <div className="border h-[67%] text-white text-3xl flex flex-col justify-evenly items-center">
+            <div className="border h-[67%] text-white text-2xl flex p-2 flex-col items-start">
+                <HistorySession></HistorySession>
+                <HistorySession></HistorySession>
+                <HistorySession></HistorySession>
+                <HistorySession></HistorySession>
+                <HistorySession></HistorySession>
+                <HistorySession></HistorySession>
                 <button onClick={handle1}>Default</button>
                 <button onClick={handle2}>Default2</button>
             </div>
-            <div className="border border-gray-500 text-white h-[13%]"></div>
+            <div className="border border-gray-500 flex justify-center items-center text-white h-[13%]">
+                <button onClick={handleLogout}>Log out</button>
+            </div>
         </div>
     );
 }

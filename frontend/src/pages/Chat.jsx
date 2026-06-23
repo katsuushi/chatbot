@@ -1,14 +1,28 @@
-import { useState } from "react";
-
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import Chatbox from "../components/Chatbox";
 import Leftbar from "../components/Leftbar";
 
 function Chat() {
     const [currentSession, setCurrentSession] = useState("default");
+    const navigate = useNavigate();
 
     function handleSession(data) {
         setCurrentSession(data);
     }
+
+    useEffect(() => {
+        async function checkAuth() {
+            const call = await fetch("http://localhost:8000/users/me", {
+                credentials: "include"
+            });
+            console.log(call.status)
+            if (call.status === 401) {
+                return navigate("/login", { replace: true });
+            }
+        }
+        checkAuth();
+    }, []);
 
     return (
         <div className="flex">
@@ -20,4 +34,3 @@ function Chat() {
 }
 
 export default Chat;
-
