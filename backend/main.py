@@ -80,6 +80,7 @@ async def promptFlashLite(
             data={prompt.session: {"history": []}},
             sessionKey=prompt.session,
             owner_id=user.id,
+            sessionName=prompt.prompt,
         )
 
         db.add(chatsession)
@@ -138,7 +139,7 @@ async def loadSession(
 
 
 @app.delete("/api/deleteSession")
-async def delizeeteSession(
+async def deleteSession(
     session: str = "default",
     db: AsyncSession = Depends(get_asyncsession),
     user: User = Depends(current_active_user),
@@ -157,6 +158,21 @@ async def delizeeteSession(
         await db.delete(row)
         await db.commit()
         return "200"
+
+
+@app.get("/api/getUserSessions")
+async def getUserSessions(
+    db: AsyncSession = Depends(get_asyncsession),
+    user: User = Depends(current_active_user),
+):
+    call = await db.execute(select(Session).where(Session.owner_id == user.id))
+    rows = call.scalars().all()
+    sessions = []
+    # return rows
+    for i in rows:
+        print(i)
+        sessions.append({"sKey": i.sessionKey, "sName": i.sessionName})
+    return sessions
 
 
 @app.get("/api/testUser")
