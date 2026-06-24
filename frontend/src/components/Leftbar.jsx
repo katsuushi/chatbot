@@ -7,7 +7,9 @@ function Leftbar({ sessionKey }) {
     const navigate = useNavigate();
 
     function handleSwitch(data) {
-        sessionKey(data)
+        console.log(sessions);
+        console.log("sessions: " + sessions);
+        sessionKey(data);
     }
 
     async function handleLogout() {
@@ -38,11 +40,11 @@ function Leftbar({ sessionKey }) {
     // passses the session name into the props session which goes into Chat, and then into Chatbox which then loads with a useEffect
 
     return (
-        <div className="min-h-screen sm:min-w-80 lg:min-w-lg max-w-lg  flex-col fixed left-0 top-0 bottom-0 bg-black">
+        <div className="min-h-screen hidden sm:block sm:min-w-80 md:min-w-80 lg:min-w-lg md:max-w-lg flex-col fixed left-0 top-0 bottom-0 bg-black">
             <div className="border border-gray-500 h-[20%] p-4">
                 <h1 className="text-3xl text-white">ChatBot</h1>
             </div>
-            <div className="border h-[67%] text-white text-2xl flex p-2 flex-col items-start">
+            <div className="border h-[67%] text-white text-xl lg:text-2xl flex p-2 flex-col items-start">
                 {sessions.map((session) => (
                     <HistorySession
                         skey={session.sKey}

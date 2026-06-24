@@ -3,16 +3,26 @@ import Bottombar from "./Bottombar";
 import LLmResponseBox from "./LLmResponseBox";
 import UserResponseBox from "./UserResponseBox";
 
-function Chatbox(session) {
+function Chatbox({ sessionKey, sessionName }) {
     const [responses, setResponses] = useState([]);
     const [prevResponses, setPrevResponses] = useState([]);
-    const [currentSession, setCurrentSession] = useState(session.session);
+    const [currentSession, setCurrentSession] = useState(sessionKey);
     const [loading, setLoading] = useState(true);
-    console.log(session.session);
+
+    console.log("SessionKey:")
+    console.log(sessionKey)
+    console.log("SessionName:")
+    console.log(sessionName)
+
     // Handles submiting a prompt
     function handleResponse(data) {
         console.log(data);
         setResponses([...responses, data]);
+    }
+
+    if (sessionName == null) {
+        console.log("undefined name!!!");
+        sessionName = "undefined";
     }
 
     function debug1() {
@@ -31,10 +41,8 @@ function Chatbox(session) {
         setResponses([]);
         console.log("runs");
         async function loadSession() {
-            console.log("this is session");
-            console.log(session.session);
             const res = await fetch(
-                `http://localhost:8000/api/loadSession?session=${session.session}`,
+                `http://localhost:8000/api/loadSession?session=${sessionKey}`,
                 {
                     credentials: "include",
                 },
@@ -55,16 +63,13 @@ function Chatbox(session) {
             }
         }
         loadSession();
-    }, [session]);
+    }, [sessionKey]);
 
     return (
         <div className="bg-[#202020] w-full h-full min-h-screen text-white flex flex-col items-center text-2xl relative">
             <div className="w-full left-80 lg:left-128 min-h-[8vh] bg-black flex items-center fixed right-0">
                 <h1 className="text-3xl text-white px-8">ChatBot</h1>{" "}
-                <h1 className="text-2xl text-gray-400!">put history here</h1>
-                <button onClick={debug1} className="">
-                    console.log responses
-                </button>
+                <h1 className="text-2xl text-gray-400!">{sessionName}</h1>
             </div>
             <div className="w-full min-h-[77vh] p-16 px-2 lg:px-12 2xl:px-128 flex flex-col gap-y-8 mb-64 mt-24">
                 {loading ? (
@@ -95,7 +100,7 @@ function Chatbox(session) {
                 )}
             </div>
 
-            <Bottombar response={handleResponse} session={session.session} />
+            <Bottombar response={handleResponse} session={sessionKey} />
         </div>
     );
 }
