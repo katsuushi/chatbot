@@ -12,6 +12,10 @@ function Leftbar({ sessionKey }) {
         sessionKey(data);
     }
 
+    function newChat() {
+        sessionKey({ skey: "new", sname: "" });
+    }
+
     async function handleLogout() {
         const call = await fetch("http://localhost:8000/auth/cookie/logout", {
             method: "POST",
@@ -41,13 +45,16 @@ function Leftbar({ sessionKey }) {
 
     return (
         <div className="min-h-screen hidden sm:block sm:min-w-80 md:min-w-80 lg:min-w-lg md:max-w-lg flex-col fixed left-0 top-0 bottom-0 bg-black">
-            <div className="border border-gray-500 h-[20%] p-4">
+            <div className="border border-gray-500 h-[20%] text-white p-4">
                 <h1 className="text-3xl text-white">ChatBot</h1>
+                <button onClick={newChat} className="text-2xl my-8">
+                    New Chat
+                </button>
             </div>
             <div className="border h-[67%] text-white text-xl lg:text-2xl flex p-2 flex-col items-start">
                 {sessions.map((session) => (
                     <HistorySession
-                        key={session.sKey} 
+                        key={session.sKey}
                         skey={session.sKey}
                         sname={session.sName}
                         switchSession={handleSwitch}

@@ -4,6 +4,9 @@ function Bottombar({ response, session }) {
     const [prompt, setPrompt] = useState("");
 
     async function promptSubmit() {
+        if (session == "new") {
+            session = crypto.randomUUID()
+        }
         response({
             prompt: prompt,
             response: "01000011",

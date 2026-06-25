@@ -9,7 +9,8 @@ function Chatbox({ sessionKey, sessionName }) {
     const [currentSession, setCurrentSession] = useState(sessionKey);
     const [loading, setLoading] = useState(true);
 
-
+    console.log(sessionName);
+    console.log(sessionKey);
 
     // Handles submiting a prompt
     function handleResponse(data) {
@@ -37,6 +38,9 @@ function Chatbox({ sessionKey, sessionName }) {
         setResponses([]);
         console.log("runs");
         async function loadSession() {
+            if (sessionKey == "new") {
+                return;
+            }
             const res = await fetch(
                 `http://localhost:8000/api/loadSession?session=${sessionKey}`,
                 {
@@ -44,7 +48,7 @@ function Chatbox({ sessionKey, sessionName }) {
                 },
             );
             const result = await res.json();
-            console.log("LoadSession response:")
+            console.log("LoadSession response:");
             console.log(result);
             console.log(result.length);
             for (let i = 0; i < result.length; i = i + 2) {
