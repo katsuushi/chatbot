@@ -2,8 +2,7 @@ import { useState } from "react";
 
 function Bottombar({ response, session }) {
     const [prompt, setPrompt] = useState("");
-    console.log("below session from bot")
-    console.log(session)
+
     async function promptSubmit() {
         response({
             prompt: prompt,
@@ -12,7 +11,7 @@ function Bottombar({ response, session }) {
         const promptarea = document.getElementById("textpromptarea");
         promptarea.value = "";
         const result = await fetch(
-            "http://localhost:8000/api/promptFlashLite",
+            `http://localhost:8000/api/promptFlashLite?session=${session}`,
             {
                 method: "POST",
                 headers: {
@@ -20,9 +19,8 @@ function Bottombar({ response, session }) {
                 },
                 body: JSON.stringify({
                     prompt: prompt,
-                    session: session,
                 }),
-                credentials: "include"
+                credentials: "include",
             },
         );
         const data = await result.json();

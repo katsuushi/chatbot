@@ -63,22 +63,23 @@ def pong():
 @app.post("/api/promptFlashLite")
 async def promptFlashLite(
     prompt: Prompt,
+    session: uuid.UUID,
     db: AsyncSession = Depends(get_asyncsession),
     user: User = Depends(current_active_user),
 ):
-    res = await db.execute(select(Session).where(Session.sessionKey == prompt.session))
+    res = await db.execute(select(Session).where(Session.sessionKey == session))
     rows = res.scalar_one_or_none()
     if rows == None:
         chat = gemini_client.aio.chats.create(
-            model="gemini-2.5-flash-lite",
+            model="gemini-2.5-flash",
             config={
                 "system_instruction": "Output your message without any new-lines (\n) or text formatting (*text* / **text**)"
             },
         )
 
         chatsession = Session(
-            data={prompt.session: {"history": []}},
-            sessionKey=prompt.session,
+            data={"history": []},
+            sessionKey=uuid.uuid4(),
             owner_id=user.id,
             sessionName=prompt.prompt,
         )
@@ -86,7 +87,7 @@ async def promptFlashLite(
         db.add(chatsession)
         rows = chatsession
     else:
-        history = json.loads(rows.data[prompt.session]["history"])
+        history = json.loads(rows.data["history"])
 
         chat = gemini_client.aio.chats.create(
             model="gemini-2.5-flash-lite",
@@ -103,14 +104,12 @@ async def promptFlashLite(
 
     rows.data = {
         **rows.data,
-        prompt.session: {
-            "history": json.dumps(
-                [
-                    {"role": msg.role, "text": msg.parts[0].text}
-                    for msg in chat.get_history()
-                ]
-            )
-        },
+        "history": json.dumps(
+            [
+                {"role": msg.role, "text": msg.parts[0].text}
+                for msg in chat.get_history()
+            ]
+        ),
     }
 
     await db.commit()
@@ -119,14 +118,15 @@ async def promptFlashLite(
 
 @app.get("/api/loadSession")
 async def loadSession(
-    session: str = "default",
+    session: uuid.UUID,
     db: AsyncSession = Depends(get_asyncsession),
     user: User = Depends(current_active_user),
 ):
+    
+
     result = await db.execute(select(Session).where(Session.sessionKey == session))
 
     row = result.scalar_one_or_none()
-    print(row)
     if row == None:
         raise HTTPException(status_code=404, detail="Problem Fetching the Session")
     elif row.owner_id != user.id:
@@ -134,7 +134,7 @@ async def loadSession(
             status_code=403, detail="You are not the owner of the session."
         )
     else:
-        history = json.loads(row.data[session]["history"])
+        history = json.loads(row.data["history"])
         return history
 
 
@@ -144,8 +144,9 @@ async def deleteSession(
     db: AsyncSession = Depends(get_asyncsession),
     user: User = Depends(current_active_user),
 ):
-    result = await db.execute(select(Session).where(Session.data[session].isnot(None)))
+    result = await db.execute(select(Session).where(Session.sessionKey.isnot(None)))
     row = result.scalar_one_or_none()
+
     if row == None:
         raise HTTPException(
             status_code=404, detail="Couldn't find the selected session."

@@ -9,10 +9,7 @@ function Chatbox({ sessionKey, sessionName }) {
     const [currentSession, setCurrentSession] = useState(sessionKey);
     const [loading, setLoading] = useState(true);
 
-    console.log("SessionKey:")
-    console.log(sessionKey)
-    console.log("SessionName:")
-    console.log(sessionName)
+
 
     // Handles submiting a prompt
     function handleResponse(data) {
@@ -21,7 +18,6 @@ function Chatbox({ sessionKey, sessionName }) {
     }
 
     if (sessionName == null) {
-        console.log("undefined name!!!");
         sessionName = "undefined";
     }
 
@@ -48,6 +44,7 @@ function Chatbox({ sessionKey, sessionName }) {
                 },
             );
             const result = await res.json();
+            console.log("LoadSession response:")
             console.log(result);
             console.log(result.length);
             for (let i = 0; i < result.length; i = i + 2) {

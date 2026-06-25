@@ -30,8 +30,9 @@ class Session(Base):
     data = Column(MutableDict.as_mutable(JSON))
     owner = relationship("User", back_populates="sessions")
     owner_id = Column(UUID(as_uuid=True), ForeignKey("user.id"), nullable=False)
-    sessionKey = Column(String(25))
+    sessionKey = Column(UUID(as_uuid=True), nullable=False)
     sessionName = Column(String(64))
+    # Need to prevent sessionName character overflow
 
 
 dbengine = create_async_engine(DATABASE_URL)

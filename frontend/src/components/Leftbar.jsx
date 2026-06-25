@@ -47,6 +47,7 @@ function Leftbar({ sessionKey }) {
             <div className="border h-[67%] text-white text-xl lg:text-2xl flex p-2 flex-col items-start">
                 {sessions.map((session) => (
                     <HistorySession
+                        key={session.sKey} 
                         skey={session.sKey}
                         sname={session.sName}
                         switchSession={handleSwitch}
