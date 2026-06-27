@@ -4,12 +4,12 @@ import Chatbox from "../components/Chatbox";
 import Leftbar from "../components/Leftbar";
 
 function Chat() {
-    const [currentSession, setCurrentSession] = useState("");
+    const [currentSession, setCurrentSession] = useState({skey: "undefined", sname: ""});
     const navigate = useNavigate();
 
     function handleSession(data) {
         setCurrentSession(data);
-        console.log(data)
+        console.log(data);
     }
 
     useEffect(() => {

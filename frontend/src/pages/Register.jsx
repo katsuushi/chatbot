@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { useState } from "react";
 function Register() {
-    const [data, setData] = useState({ em: "", ps: "" , cfps: ""});
+    const [data, setData] = useState({ em: "", ps: "", cfps: "" });
 
     async function handleRegister() {
         console.log(data);
@@ -28,6 +28,16 @@ function Register() {
         console.log(res);
     }
 
+    function handleKey(event) {
+        if (event.key == "Enter" && prompt != "") {
+            event.preventDefault();
+            handleRegister();
+        } else if (event.key != "Enter") {
+        } else if (event.key == "Enter" && prompt == "") {
+            event.preventDefault();
+        }
+    }
+
     return (
         <div className="bg-[#202020] w-full h-[100vh] flex flex-col justify-center items-center">
             <div>
@@ -49,21 +59,24 @@ function Register() {
                         <input
                             type="text"
                             className="rounded-lg bg-[#404040] border-0 outline-none ml-4 p-2 px-4 w-128 my-4"
+                            onKeyDown={handleKey}
                             onChange={(val) =>
-                                setData({ ...data, em: val.target.value})
+                                setData({ ...data, em: val.target.value })
                             }
                         />
 
                         <input
-                            type="text"
+                            type="password"
                             className="rounded-lg bg-[#404040] border-0 outline-none ml-4 p-2 px-4 w-128 my-4"
+                            onKeyDown={handleKey}
                             onChange={(val) =>
                                 setData({ ...data, ps: val.target.value })
                             }
                         />
                         <input
-                            type="text"
+                            type="password"
                             className="rounded-lg bg-[#404040] border-0 outline-none ml-4 p-2 px-4 w-128 my-4"
+                            onKeyDown={handleKey}
                             onChange={(val) =>
                                 setData({ ...data, cfps: val.target.value })
                             }

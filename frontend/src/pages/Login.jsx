@@ -4,7 +4,7 @@ import { useState } from "react";
 function Login() {
     const [data, setData] = useState({ em: "", ps: "" });
 
-    const navigate = useNavigate()
+    const navigate = useNavigate();
 
     async function handleLogin() {
         const call = await fetch("http://localhost:8000/auth/cookie/login", {
@@ -18,7 +18,17 @@ function Login() {
         if (!call.ok) {
             throw new Error("Login failed");
         } else {
-            return navigate("/", {replace: true});
+            return navigate("/", { replace: true });
+        }
+    }
+
+    function handleKey(event) {
+        if (event.key == "Enter" && prompt != "") {
+            event.preventDefault();
+            handleLogin();
+        } else if (event.key != "Enter") {
+        } else if (event.key == "Enter" && prompt == "") {
+            event.preventDefault();
         }
     }
 
@@ -40,14 +50,16 @@ function Login() {
                         <input
                             type="text"
                             className="rounded-lg bg-[#404040] border-0 outline-none ml-4 p-2 px-4 w-128 my-4"
+                            onKeyDown={handleKey}
                             onChange={(val) =>
                                 setData({ ...data, em: val.target.value })
                             }
                         />
 
                         <input
-                            type="text"
+                            type="password"
                             className="rounded-lg bg-[#404040] border-0 outline-none ml-4 p-2 px-4 w-128 my-4"
+                            onKeyDown={handleKey}
                             onChange={(val) =>
                                 setData({ ...data, ps: val.target.value })
                             }

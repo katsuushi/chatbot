@@ -4,8 +4,12 @@ function Bottombar({ response, session }) {
     const [prompt, setPrompt] = useState("");
 
     async function promptSubmit() {
-        if (session == "new") {
-            session = crypto.randomUUID()
+        if (
+            session == "new" ||
+            session === undefined ||
+            session == "undefined"
+        ) {
+            session = crypto.randomUUID();
         }
         response({
             prompt: prompt,
@@ -13,6 +17,7 @@ function Bottombar({ response, session }) {
         });
         const promptarea = document.getElementById("textpromptarea");
         promptarea.value = "";
+        console.log("fetching with this session: " + session);
         const result = await fetch(
             `http://localhost:8000/api/promptFlashLite?session=${session}`,
             {

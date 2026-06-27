@@ -122,7 +122,6 @@ async def loadSession(
     db: AsyncSession = Depends(get_asyncsession),
     user: User = Depends(current_active_user),
 ):
-    
 
     result = await db.execute(select(Session).where(Session.sessionKey == session))
 
@@ -159,6 +158,19 @@ async def deleteSession(
         await db.delete(row)
         await db.commit()
         return "200"
+
+
+@app.delete("/api/deleteAllUserSessions")
+async def deleteAllUserSessions(
+    db: AsyncSession = Depends(get_asyncsession),
+    user: User = Depends(current_active_user),
+):
+    call = await db.execute(select(Session).where(Session.owner_id == user.id))
+    rows = call.scalars().all()
+    for i in rows:
+        await db.delete(i)
+    await db.commit()
+    return rows
 
 
 @app.get("/api/getUserSessions")

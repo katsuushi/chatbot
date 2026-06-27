@@ -5,10 +5,8 @@ function HistorySession({ sname, skey, switchSession }) {
         console.log("undefined name!!!");
         sname = "undefined";
     }
-    console.log("Key: " + skey);
 
     function handleSwitch() {
-        console.log(skey);
         switchSession({ sname: sname, skey: skey });
     }
 

@@ -13,6 +13,7 @@ function Leftbar({ sessionKey }) {
     }
 
     function newChat() {
+        console.log("LEFTBAR NEWCHAT")
         sessionKey({ skey: "new", sname: "" });
     }
 
@@ -51,7 +52,7 @@ function Leftbar({ sessionKey }) {
                     New Chat
                 </button>
             </div>
-            <div className="border h-[67%] text-white text-xl lg:text-2xl flex p-2 flex-col items-start">
+            <div className="border h-[67%] text-white text-xl lg:text-2xl flex p-2 flex-col items-start overflow-scroll">
                 {sessions.map((session) => (
                     <HistorySession
                         key={session.sKey}
