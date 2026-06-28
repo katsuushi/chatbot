@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import HistorySession from "./HistorySession.jsx";
-function Leftbar({ sessionKey }) {
+function Leftbar({ sessionKey, trigger }) {
     const [sessions, setSessions] = useState([]);
 
     const navigate = useNavigate();
@@ -13,12 +13,20 @@ function Leftbar({ sessionKey }) {
     }
 
     function newChat() {
-        console.log("LEFTBAR NEWCHAT")
+        console.log("LEFTBAR NEWCHAT");
         sessionKey({ skey: "new", sname: "" });
+        trigger(crypto.randomUUID());
     }
 
+    function handleChange(skey) {
+        const filtered = sessions.filter((session) => session.sKey !== skey)
+        
+        setSessions(filtered)
+        sessionKey("undefined");
+    }
+    
     async function handleLogout() {
-        const call = await fetch("http://localhost:8000/auth/cookie/logout", {
+    const call = await fetch("http://localhost:8000/auth/cookie/logout", {
             method: "POST",
             credentials: "include",
         });
@@ -59,6 +67,7 @@ function Leftbar({ sessionKey }) {
                         skey={session.sKey}
                         sname={session.sName}
                         switchSession={handleSwitch}
+                        deleteSession={handleChange}
                     ></HistorySession>
                 ))}
             </div>

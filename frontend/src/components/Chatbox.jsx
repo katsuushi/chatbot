@@ -3,7 +3,7 @@ import Bottombar from "./Bottombar";
 import LLmResponseBox from "./LLmResponseBox";
 import UserResponseBox from "./UserResponseBox";
 
-function Chatbox({ sessionKey, sessionName }) {
+function Chatbox({ sessionKey, sessionName, trigger }) {
     const [responses, setResponses] = useState([]);
     const [prevResponses, setPrevResponses] = useState([]);
     const [currentSession, setCurrentSession] = useState(sessionKey);
@@ -35,9 +35,13 @@ function Chatbox({ sessionKey, sessionName }) {
         setResponses([]);
         console.log("USEEFFECT runs");
         console.log(sessionKey);
-        console.log(responses.length)
+        console.log(responses.length);
         async function loadSession() {
-            if (sessionKey == "new" || sessionKey === undefined || sessionKey == "undefined") {
+            if (
+                sessionKey == "new" ||
+                sessionKey === undefined ||
+                sessionKey == "undefined"
+            ) {
                 setLoading(false);
                 return;
             }
@@ -64,7 +68,7 @@ function Chatbox({ sessionKey, sessionName }) {
             }
         }
         loadSession();
-    }, [sessionKey]);
+    }, [sessionKey, trigger]);
 
     return (
         <div className="bg-[#202020] w-full h-full min-h-screen text-white flex flex-col items-center text-2xl relative">
@@ -73,22 +77,17 @@ function Chatbox({ sessionKey, sessionName }) {
                 <h1 className="text-2xl text-gray-400!">{sessionName}</h1>
             </div>
             <div className="w-full min-h-[77vh] p-16 px-2 lg:px-12 2xl:px-128 flex flex-col gap-y-8 mb-64 mt-24">
-                {responses.length == 0 ? (
-                    <div>
-                        <h1>This is the beginning of your conversation.</h1>
-                        <h1>This is the beginning of your conversation.</h1>
-
-                        <h1>This is the beginning of your conversation.</h1>
-
-                        <h1>This is the beginning of your conversation.</h1>
-                    </div>
-                ) : console.log(responses.length), loading ? (
+                {loading ? (
                     prevResponses.map((res, i) => (
                         <div key={i}>
                             <UserResponseBox text={res.prompt} />
                             <LLmResponseBox text={res.response} />
                         </div>
                     ))
+                ) : responses.length == 0 ? (
+                    <div className="h-[50vh] text-center flex justify-center items-center">
+                        <h1>This is the beginning of your conversation.</h1>
+                    </div>
                 ) : (
                     responses.map(
                         (res, i) => (

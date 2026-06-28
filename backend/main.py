@@ -143,7 +143,9 @@ async def deleteSession(
     db: AsyncSession = Depends(get_asyncsession),
     user: User = Depends(current_active_user),
 ):
-    result = await db.execute(select(Session).where(Session.sessionKey.isnot(None)))
+    result = await db.execute(
+        select(Session).where(Session.sessionKey == uuid.UUID(session))
+    )
     row = result.scalar_one_or_none()
 
     if row == None:
