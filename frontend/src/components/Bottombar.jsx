@@ -1,7 +1,9 @@
-import { useState } from "react";
-
-function Bottombar({ response, session }) {
+import { useState, useContext } from "react";
+import { SessionContext } from "../contexts/sessionContext";
+function Bottombar({ response, session, reload }) {
     const [prompt, setPrompt] = useState("");
+    let reloadSessions = false;
+    const { loadFn } = useContext(SessionContext);
 
     async function promptSubmit() {
         if (
@@ -10,6 +12,7 @@ function Bottombar({ response, session }) {
             session == "undefined"
         ) {
             session = crypto.randomUUID();
+            reloadSessions = true;
         }
         response({
             prompt: prompt,
@@ -39,6 +42,10 @@ function Bottombar({ response, session }) {
         console.log(data);
         console.log("sent data to response");
         setPrompt("");
+        if (reloadSessions) {
+            console.log("OH")
+            loadFn && loadFn()
+        }
     }
 
     function handleKey(event) {

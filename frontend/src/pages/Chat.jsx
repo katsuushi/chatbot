@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { SessionProvider } from "../contexts/sessionContext";
 import Chatbox from "../components/Chatbox";
 import Leftbar from "../components/Leftbar";
 
@@ -8,6 +9,7 @@ function Chat() {
         skey: "undefined",
         sname: "",
     });
+    const [reload, setReload] = useState(0);
     const [trigger, setTrigger] = useState("");
     const navigate = useNavigate();
 
@@ -34,15 +36,21 @@ function Chat() {
     }, []);
 
     return (
-        <div className="flex">
-            <div className="min-h-screen sm:min-w-80 lg:min-w-lg"></div>
-            <Leftbar sessionKey={handleSession} trigger={handleTrigger} />
-            <Chatbox
-                sessionKey={currentSession.skey}
-                sessionName={currentSession.sname}
-                trigger={trigger}
-            />
-        </div>
+        <SessionProvider>
+            <div className="flex">
+                <div className="min-h-screen sm:min-w-80 lg:min-w-lg"></div>
+                <Leftbar
+                    sessionKey={handleSession}
+                    trigger={handleTrigger}
+                    reload={reload}
+                />
+                <Chatbox
+                    sessionKey={currentSession.skey}
+                    sessionName={currentSession.sname}
+                    trigger={trigger}
+                />
+            </div>
+        </SessionProvider>
     );
 }
 

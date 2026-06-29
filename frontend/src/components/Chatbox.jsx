@@ -76,7 +76,7 @@ function Chatbox({ sessionKey, sessionName, trigger }) {
                 <h1 className="text-3xl text-white px-8">ChatBot</h1>
                 <h1 className="text-2xl text-gray-400!">{sessionName}</h1>
             </div>
-            <div className="w-full min-h-[77vh] p-16 px-2 lg:px-12 2xl:px-128 flex flex-col gap-y-8 mb-64 mt-24">
+            <div className="w-full min-h-[50vh] p-16 px-2 lg:px-12 2xl:px-64 3xl:px-128 flex flex-col gap-y-8 mb-64 mt-24">
                 {loading ? (
                     prevResponses.map((res, i) => (
                         <div key={i}>
