@@ -22,15 +22,18 @@ function HistorySession({ sname, skey, switchSession, deleteSession }) {
         <div className="max-w-full min-w-full flex">
             <button
                 onClick={handleSwitch}
-                className="truncate h-12 overflow-hidden nowrap max-w-[85%] mx-2 text-left rounded-xl px-2 active:bg-[#202020] hover:bg-[#303030] w-full"
+                className="truncate h-12 overflow-hidden nowrap max-w-[80%] xl:max-w-[85%] mx-2 text-left rounded-xl px-2 active:bg-[#202020] hover:bg-[#303030] w-full"
             >
                 {sname}
             </button>
             <button
                 onClick={handleDelete}
-                className="ml-auto w-[10%] rounded-xl mx-2 px-2 hover:bg-[#303030] active:bg-[#202020]"
+                className="ml-auto w-[20%] lg:w-[8%] xl:w-[10%] flex justify-center items-center rounded-xl mx-2 hover:bg-[#303030] active:bg-[#202020]"
             >
-                D
+                <img
+                    src="../../public/bin.png"
+                    className="w-[32px] xl:w-[64px] 2xl:min-w-[32px] pb-1"
+                />
             </button>
         </div>
     );
