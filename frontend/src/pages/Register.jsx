@@ -10,6 +10,18 @@ function Register() {
             return "Passwords do not match.";
         }
 
+        let username = "";
+
+        for (let i = 0; i < data.em.length; i++) {
+            console.log(data.em);
+            if (data.em[i] === "@") {
+                break;
+            } else {
+                username = username + data.em[i];
+            }
+        }
+        console.log(username);
+
         const call = await fetch("http://localhost:8000/auth/register", {
             method: "POST",
             headers: {
@@ -18,9 +30,11 @@ function Register() {
             body: JSON.stringify({
                 email: data.em,
                 password: data.ps,
+
                 is_active: true,
                 is_superuser: false,
                 is_verified: false,
+                username: username,
             }),
         });
 

@@ -2,8 +2,9 @@ import { useState, useEffect, createContext, useContext } from "react";
 import { SessionContext } from "../contexts/sessionContext";
 import { useNavigate } from "react-router-dom";
 import HistorySession from "./HistorySession.jsx";
-function Leftbar({ sessionKey, trigger, reloadSessions }) {
+function Leftbar({ sessionKey, trigger, reloadSessions, burger }) {
     const [sessions, setSessions] = useState([]);
+    const [userData, setUserData] = useState({ em: "", us: "" });
     const navigate = useNavigate();
     const { setLoadFn } = useContext(SessionContext);
     function handleSwitch(data) {
@@ -13,7 +14,6 @@ function Leftbar({ sessionKey, trigger, reloadSessions }) {
     }
 
     function newChat() {
-        console.log("LEFTBAR NEWCHAT");
         sessionKey({ skey: "new", sname: "" });
         trigger(crypto.randomUUID());
     }
@@ -23,14 +23,6 @@ function Leftbar({ sessionKey, trigger, reloadSessions }) {
 
         setSessions(filtered);
         sessionKey("undefined");
-    }
-
-    async function handleLogout() {
-        const call = await fetch("http://localhost:8000/auth/cookie/logout", {
-            method: "POST",
-            credentials: "include",
-        });
-        return navigate("/login", { replace: true });
     }
 
     async function loadSessions() {
@@ -43,8 +35,22 @@ function Leftbar({ sessionKey, trigger, reloadSessions }) {
         console.log(res);
     }
 
+    async function getUserInfo() {
+        const call = await fetch("http://localhost:8000/users/me", {
+            credentials: "include",
+        });
+        const res = await call.json();
+
+        if (res.username == "") {
+            setUserData({ em: "undefined", us: "undefined" });
+        } else {
+            setUserData({ em: res.email, us: res.username });
+        }
+    }
+
     useEffect(() => {
         setLoadFn(() => loadSessions);
+        getUserInfo();
         loadSessions();
     }, []);
     // UseEffect which gets user's sessions and stores them into "sessions"
@@ -81,8 +87,17 @@ function Leftbar({ sessionKey, trigger, reloadSessions }) {
                     ></HistorySession>
                 ))}
             </div>
-            <div className=" flex justify-center items-center text-white h-[13%]">
-                <button onClick={handleLogout}>Log out</button>
+            <div className=" flex justify-between items-center p-8 text-white h-[13%]">
+                <span className="flex justify-center items-center gap-x-2">
+                    <img src="../../public/user.png" className="w-[10%]" />
+                    <h1 className="text-2xl">{userData.us}</h1>
+                </span>
+                <button
+                    onClick={burger}
+                    className="flex justify-center items-center py-6 px-1 w-[50%] h-[100%] rounded-full  hover:bg-[#303030] hover:cursor-pointer active:bg-[#202020]"
+                >
+                    <img src="../../public/cog.png" className="w-[80%]" />
+                </button>
             </div>
         </div>
     );

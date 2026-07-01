@@ -9,13 +9,26 @@ function Chat() {
         skey: "undefined",
         sname: "",
     });
+    const [burger, setBurger] = useState(false);
     const [reload, setReload] = useState(0);
     const [trigger, setTrigger] = useState("");
     const navigate = useNavigate();
 
+    async function handleLogout() {
+        const call = await fetch("http://localhost:8000/auth/cookie/logout", {
+            method: "POST",
+            credentials: "include",
+        });
+        return navigate("/login", { replace: true });
+    }
+
     function handleSession(data) {
         setCurrentSession(data);
         console.log(data);
+    }
+
+    function handleBurger() {
+        setBurger(!burger);
     }
 
     function handleTrigger(data) {
@@ -43,12 +56,20 @@ function Chat() {
                     sessionKey={handleSession}
                     trigger={handleTrigger}
                     reload={reload}
+                    burger={handleBurger}
                 />
                 <Chatbox
                     sessionKey={currentSession.skey}
                     sessionName={currentSession.sname}
                     trigger={trigger}
                 />
+                {burger ? (
+                    <div className="bg-[#606060] z-32 fixed w-64 h-32 text-white bottom-24 left-96 flex justify-center">
+                        <button onClick={handleLogout} className="text-2xl">Log out</button>
+                    </div>
+                ) : (
+                    <></>
+                )}
             </div>
         </SessionProvider>
     );
