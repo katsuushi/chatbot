@@ -3,8 +3,9 @@ import Bottombar from "./Bottombar";
 import LLmResponseBox from "./LLmResponseBox";
 import UserResponseBox from "./UserResponseBox";
 
-function Chatbox({ sessionKey, sessionName, trigger }) {
+function Chatbox({ sessionKey, sessionName, trigger, leftbarstate }) {
     const [responses, setResponses] = useState([]);
+    const [leftbar, setLeftbar] = useState(false);
     const [prevResponses, setPrevResponses] = useState([]);
     const [currentSession, setCurrentSession] = useState(sessionKey);
     const [loading, setLoading] = useState(true);
@@ -70,13 +71,31 @@ function Chatbox({ sessionKey, sessionName, trigger }) {
         loadSession();
     }, [sessionKey, trigger]);
 
+    function handleLeftbar() {
+        leftbarstate(!leftbar);
+        setLeftbar(!leftbar);
+    }
+
     return (
-        <div className="bg-[#202020] w-full h-full min-h-screen text-white flex flex-col items-center text-2xl relative">
-            <div className="w-full left-80 lg:left-128 min-h-[8vh] bg-black flex items-center fixed right-0">
-                <h1 className="text-3xl text-white px-8">ChatBot</h1>
-                <h1 className="text-2xl text-gray-400!">{sessionName}</h1>
+        <div className="bg-[#202020] w-full min-h-[100dvh] text-white flex flex-col items-center justify-between text-2xl">
+            <div className="w-full md:left-80 lg:left-128 min-h-[8vh] p-4 bg-black flex items-center fixed gap-x-4 right-0">
+                <div className="flex items-center">
+                    <button className="" onClick={handleLeftbar}>
+                        <img
+                            src="../../public/hamburger.png"
+                            className="w-[24px] mr-6 block md:hidden"
+                        />
+                    </button>
+
+                    <h1 className="xl:text-3xl lg:text-2xl text-xl text-white">
+                        ChatBot
+                    </h1>
+                </div>
+                <h1 className="xl:text-2xl lg:text-xl text-lg hidden sm:block text-gray-400!">
+                    {sessionName}
+                </h1>
             </div>
-            <div className="w-full max-h-[63vh] p-16 px-2 lg:px-12 2xl:px-64 3xl:px-128 flex flex-col gap-y-8 mb-64 mt-24">
+            <div className="w-full max-h-full p-16 sm:my-8 px-4 sm:px-12 2xl:px-64 3xl:px-128 flex flex-col gap-y-8 xl:mt-12 text-lg md:text-xl xl:text-2xl">
                 {loading ? (
                     prevResponses.map((res, i) => (
                         <div key={i}>
@@ -85,7 +104,8 @@ function Chatbox({ sessionKey, sessionName, trigger }) {
                         </div>
                     ))
                 ) : responses.length == 0 ? (
-                    <div className="h-[50vh] text-center flex justify-center items-center">
+                    <div className="h-[50vh] mt-16 text-center flex justify-center items-center">
+                        {" "}
                         <h1>This is the beginning of your conversation.</h1>
                     </div>
                 ) : (
@@ -102,6 +122,7 @@ function Chatbox({ sessionKey, sessionName, trigger }) {
             </div>
 
             <Bottombar response={handleResponse} session={sessionKey} />
+            <div className="w-[100%] h-[15vh]"></div>
         </div>
     );
 }

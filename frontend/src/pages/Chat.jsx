@@ -9,6 +9,7 @@ function Chat() {
         skey: "undefined",
         sname: "",
     });
+    const [leftbar, setLeftbar] = useState(false);
     const [burger, setBurger] = useState(false);
     const [reload, setReload] = useState(0);
     const [trigger, setTrigger] = useState("");
@@ -20,6 +21,12 @@ function Chat() {
             credentials: "include",
         });
         return navigate("/login", { replace: true });
+    }
+
+    function handleLeftbar() {
+        const timer = setTimeout(() => {
+            setLeftbar(!leftbar);
+        }, 50);
     }
 
     function handleSession(data) {
@@ -50,22 +57,37 @@ function Chat() {
 
     return (
         <SessionProvider>
-            <div className="flex">
-                <div className="min-h-screen sm:min-w-80 lg:min-w-lg"></div>
+            <div className="flex min-h-screen">
+                <div className="hidden md:block min-h-screen sm:min-w-80 lg:min-w-lg"></div>
                 <Leftbar
                     sessionKey={handleSession}
                     trigger={handleTrigger}
                     reload={reload}
                     burger={handleBurger}
+                    active={leftbar}
+                    setActive={handleLeftbar}
                 />
                 <Chatbox
                     sessionKey={currentSession.skey}
                     sessionName={currentSession.sname}
                     trigger={trigger}
+                    leftbarstate={handleLeftbar}
                 />
                 {burger ? (
-                    <div className="bg-[#606060] z-32 fixed w-64 h-32 text-white bottom-24 left-96 flex justify-center">
-                        <button onClick={handleLogout} className="text-2xl">Log out</button>
+                    <div className="bg-[#101010] rounded-3xl z-99999 fixed w-64 h-32 text-white bottom-24 left-96 flex flex-col justify-center items-center p-2 px-4">
+                        <button
+                            onClick={handleLogout}
+                            className="text-2xl flex gap-x-2 justify-center items-center hover:bg-[#050505] hover:cursor-pointer active:bg-[#000] h-fit p-4 rounded-xl"
+                        >
+                            <svg width="24" height="24">
+                                <image
+                                    width="24"
+                                    height="24"
+                                    href="../../public/door.svg"
+                                />
+                            </svg>
+                            Log out
+                        </button>
                     </div>
                 ) : (
                     <></>

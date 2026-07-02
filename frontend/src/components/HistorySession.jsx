@@ -1,6 +1,12 @@
 import { useState } from "react";
 
-function HistorySession({ sname, skey, switchSession, deleteSession }) {
+function HistorySession({
+    sname,
+    skey,
+    switchSession,
+    deleteSession,
+    onClick,
+}) {
     if (sname == null) {
         console.log("undefined name!!!");
         sname = "undefined";
@@ -19,7 +25,7 @@ function HistorySession({ sname, skey, switchSession, deleteSession }) {
     }
 
     return (
-        <div className="max-w-full min-w-full flex">
+        <div className="max-w-full min-w-full flex" onClick={onClick}>
             <button
                 onClick={handleSwitch}
                 className="truncate h-12 overflow-hidden nowrap max-w-[80%] xl:max-w-[85%] mx-2 text-left rounded-xl px-2 active:bg-[#202020] hover:bg-[#303030] w-full"

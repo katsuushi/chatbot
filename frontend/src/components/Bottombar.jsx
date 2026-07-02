@@ -43,8 +43,8 @@ function Bottombar({ response, session, reload }) {
         console.log("sent data to response");
         setPrompt("");
         if (reloadSessions) {
-            console.log("OH")
-            loadFn && loadFn()
+            console.log("OH");
+            loadFn && loadFn();
         }
     }
 
@@ -59,17 +59,14 @@ function Bottombar({ response, session, reload }) {
     }
 
     return (
-        <div className="right-0 left-80 lg:left-128 min-h-[15vh] flex flex-col items-center justify-start p-4 pt-0 gap-y-4.5 fixed bottom-0 bg-[#202020]">
-            {
-                // Finish the message bar
-            }
-            <div className="w-[50%] flex items-center bg-[#303030] rounded-xl text-center h-24">
+        <div className="md:right-0 md:left-80 w-[100%] md:w-auto lg:left-128 min-h-[15vh] flex flex-col items-center justify-center py-2 gap-y-4.5 fixed bottom-0 bg-[#202020]">
+            <div className="w-[75%] 2xl:w-[50%] flex items-center bg-[#303030] rounded-xl text-center h-24 max-h-64">
                 <textarea
                     onChange={(e) => setPrompt(e.target.value)}
                     placeholder="Ask anything"
                     id="textpromptarea"
                     onKeyDown={handleKey}
-                    className="rounded-xl overflow-hidden border-none outline-0 resize-none px-4 w-[90%]"
+                    className="rounded-xl text-xl md:text-2xl overflow-hidden border-none  outline-0 resize-none px-4 w-[90%]"
                 ></textarea>
                 <button
                     className="bg-black h-full w-[10%] rounded-r-xl hover:cursor-pointer hover:text-gray-500"
@@ -80,7 +77,7 @@ function Bottombar({ response, session, reload }) {
             </div>
 
             <div>
-                <h1 className="text-m lg:text-2xl">
+                <h1 className="text-center opacity-[80%] text-sm lg:text-xl">
                     Chatbot can make mistakes. Double check important
                     information.
                 </h1>

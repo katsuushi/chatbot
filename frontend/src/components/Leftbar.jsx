@@ -2,7 +2,14 @@ import { useState, useEffect, createContext, useContext } from "react";
 import { SessionContext } from "../contexts/sessionContext";
 import { useNavigate } from "react-router-dom";
 import HistorySession from "./HistorySession.jsx";
-function Leftbar({ sessionKey, trigger, reloadSessions, burger }) {
+function Leftbar({
+    sessionKey,
+    trigger,
+    reloadSessions,
+    burger,
+    active,
+    setActive,
+}) {
     const [sessions, setSessions] = useState([]);
     const [userData, setUserData] = useState({ em: "", us: "" });
     const navigate = useNavigate();
@@ -13,7 +20,14 @@ function Leftbar({ sessionKey, trigger, reloadSessions, burger }) {
         sessionKey(data);
     }
 
-    function newChat() {
+    function handleActive() {
+        console.log("handleActive Runs")
+        if (active) {
+            setActive()
+        }
+    }
+
+    function newChat() { 
         sessionKey({ skey: "new", sname: "" });
         trigger(crypto.randomUUID());
     }
@@ -26,7 +40,6 @@ function Leftbar({ sessionKey, trigger, reloadSessions, burger }) {
     }
 
     async function loadSessions() {
-        console.log("ITS FUCKING CALINGGGGGGGGGGGGGGGGGGGGGG");
         const call = await fetch("http://localhost:8000/api/getUserSessions", {
             credentials: "include",
         });
@@ -58,15 +71,29 @@ function Leftbar({ sessionKey, trigger, reloadSessions, burger }) {
     // passses the session name into the props session which goes into Chat, and then into Chatbox which then loads with a useEffect
 
     return (
-        <div className="min-h-screen hidden sm:block sm:min-w-80 md:min-w-80 lg:min-w-lg md:max-w-lg flex-col fixed left-0 top-0 bottom-0 bg-black">
+        <div
+            className={`${active ? "fixed sm:max-w-lg! max-w-80!" : "hidden"} z-999 max-h-[100dvh]  md:fixed md:block md:max-w-80 lg:min-w-lg flex-col left-0 top-0 bottom-0 bg-black`}
+        >
             <div className=" h-[20%] text-white p-4">
-                <h1 className="text-3xl text-white flex gap-x-2 items-center">
-                    <img src="../../public/robot.png" className="w-[10%]" />
+                <h1 className="md:text-3xl text-2xl text-white flex gap-x-2 items-center  ">
+                    <img
+                        src="../../public/robot.png"
+                        className="w-[48px] md:w-[64px] lg:pb-1 pb-2"
+                    />
                     ChatBot
+                    <button
+                        onClick={setActive}
+                        className="md:hidden ml-auto mr-8"
+                    >
+                        <img
+                            src="../../public/cross.png"
+                            className="w-[16px]"
+                        />
+                    </button>
                 </h1>
-                <button
-                    onClick={newChat}
-                    className="text-2xl my-8 flex gap-x-2 items-center hover:bg-[#303030] active:bg-[#202020] px-2 py-2 rounded-xl"
+                <button 
+                    onClick={() => {newChat(); handleActive();}}
+                    className="text-2xl flex gap-x-2 items-center hover:bg-[#303030] active:bg-[#202020] px-2 py-2 rounded-xl"
                 >
                     {" "}
                     <img
@@ -76,9 +103,10 @@ function Leftbar({ sessionKey, trigger, reloadSessions, burger }) {
                     <p>New Chat</p>
                 </button>
             </div>
-            <div className=" h-[67%] text-white text-xl lg:text-2xl flex p-2 flex-col items-start overflow-y-scroll overflow-x-hidden [scrollbar-width:thin] [scrollbar-color:#000_#000] scrollbar-thumb-rounded-[32px] hover:[scrollbar-color:#292929_#000]">
+            <div className="h-[67%] text-white text-xl lg:text-2xl flex p-2 flex-col items-start overflow-y-scroll overflow-x-hidden [scrollbar-width:thin] [scrollbar-color:#000_#000] scrollbar-thumb-rounded-[32px] hover:[scrollbar-color:#292929_#000]">
                 {sessions.map((session) => (
                     <HistorySession
+                        onClick={() => {handleActive();}}
                         key={session.sKey}
                         skey={session.sKey}
                         sname={session.sName}
