@@ -13,7 +13,7 @@ SECRET = "SECRETASFUCK"
 bearer_transport = BearerTransport(tokenUrl="/auth/jwt/login")
 cookie_transport = CookieTransport(
     cookie_name="cookieauth",
-    cookie_max_age=36000000000,
+    cookie_max_age=None,
     cookie_secure=True,
     cookie_httponly=True,
 )

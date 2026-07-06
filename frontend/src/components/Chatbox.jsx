@@ -3,7 +3,13 @@ import Bottombar from "./Bottombar";
 import LLmResponseBox from "./LLmResponseBox";
 import UserResponseBox from "./UserResponseBox";
 
-function Chatbox({ sessionKey, sessionName, trigger, leftbarstate, initChatKey }) {
+function Chatbox({
+    sessionKey,
+    sessionName,
+    trigger,
+    leftbarstate,
+    initChatKey,
+}) {
     const [responses, setResponses] = useState([]);
     const [leftbar, setLeftbar] = useState(false);
     const [prevResponses, setPrevResponses] = useState([]);
@@ -100,9 +106,8 @@ function Chatbox({ sessionKey, sessionName, trigger, leftbarstate, initChatKey }
                     </h1>
                 </div>
                 <h1 className="xl:text-2xl lg:text-xl text-lg hidden sm:block text-gray-400!">
-                    {sessionKey}
+                    {sessionName}
                 </h1>
-                <button onClick={testSession}>Output session</button>
             </div>
             <div className="w-full max-h-full p-16 sm:my-8 px-4 sm:px-12 2xl:px-64 3xl:px-128 flex flex-col gap-y-8 xl:mt-12 text-lg md:text-xl xl:text-2xl">
                 {loading ? (

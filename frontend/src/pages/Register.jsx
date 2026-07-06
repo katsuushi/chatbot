@@ -2,12 +2,21 @@ import { Link } from "react-router-dom";
 import { useState } from "react";
 function Register() {
     const [data, setData] = useState({ em: "", ps: "", cfps: "" });
+    const [registered, setRegistered] = useState(false);
+    const [passwordMatch, setPasswordMatch] = useState(false);
+    const [fieldEmpty, setFieldEmpty] = useState(false);
 
     async function handleRegister() {
+        setPasswordMatch(false);
         console.log(data);
         if (data.ps != data.cfps) {
-            console.log("Passwords do not match.");
+            setPasswordMatch(true);
             return "Passwords do not match.";
+        }
+
+        if (data.em === "" || data.ps === "" || data.cfps === "") {
+            setFieldEmpty(true);
+            return "Fields cannot be empty";
         }
 
         let username = "";
@@ -37,9 +46,9 @@ function Register() {
                 username: username,
             }),
         });
-
-        const res = await call.json();
-        console.log(res);
+        if (call.ok) {
+            setRegistered(true);
+        }
     }
 
     function handleKey(event) {
@@ -55,13 +64,34 @@ function Register() {
     return (
         <div className="bg-[#202020] w-full h-[100vh] flex flex-col justify-center items-center">
             <div>
-                <div className="flex flex-col items-center justify-center text-white text-3xl my-8">
+                <div className="flex flex-col items-center justify-center text-white text-3xl mt-8">
                     <h1 className="font-bold text-5xl!">Sign Up</h1>
                     <p className="text-xl! text-[#aaaaaa]! m-2">
                         Experience the power of AI.
                     </p>
                 </div>
-                <div className="text-white text-2xl my-8 flex">
+                {passwordMatch ? (
+                    <p className="text-xl! text-[#FF0000]! mb-0! mr-auto">
+                        Passwords do not match.
+                    </p>
+                ) : (
+                    <></>
+                )}
+                {fieldEmpty ? (
+                    <p className="text-xl! text-[#FF0000]! mb-0! mr-auto">
+                        Fields cannot be empty.{" "}
+                    </p>
+                ) : (
+                    <></>
+                )}
+                {registered ? (
+                    <p className="text-xl! text-[#FF0000]! mb-0! mr-auto">
+                        User successfully registered.
+                    </p>
+                ) : (
+                    <></>
+                )}
+                <div className="text-white text-2xl mb-8 flex">
                     <div className="flex flex-col items-center">
                         <label className="my-6">E-mail:</label>
                         <label className="my-6">Password:</label>
@@ -97,7 +127,6 @@ function Register() {
                         />
                     </div>
                 </div>
-
                 <div className="my-8 text-white pl-16">
                     <button
                         onClick={handleRegister}

@@ -3,10 +3,16 @@ import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 function Login() {
     const [data, setData] = useState({ em: "", ps: "" });
-
+    const [failed, setFailed] = useState(false);
+    const [fieldEmpty, setFieldEmpty] = useState(false);
     const navigate = useNavigate();
 
     async function handleLogin() {
+        setFailed(false);
+        if (data.em === "" || data.ps === "" || data.cfps === "") {
+            setFieldEmpty(true);
+            return "Fields cannot be empty";
+        }
         const call = await fetch("http://localhost:8000/auth/cookie/login", {
             method: "POST",
             headers: {
@@ -16,6 +22,7 @@ function Login() {
             credentials: "include",
         });
         if (!call.ok) {
+            setFailed(true);
             throw new Error("Login failed");
         } else {
             return navigate("/", { replace: true });
@@ -35,13 +42,27 @@ function Login() {
     return (
         <div className="bg-[#202020] w-full h-[100vh] flex flex-col justify-center items-center">
             <div>
-                <div className="flex flex-col items-center justify-center text-white text-3xl my-8">
+                <div className="flex flex-col items-center justify-center text-white text-3xl mt-8">
                     <h1 className="font-bold text-5xl!">Chatbot</h1>
                     <p className="text-xl! text-[#aaaaaa]! m-2">
                         Converse freely, as you wish.
                     </p>
                 </div>
-                <div className="text-white text-2xl my-8 flex">
+                {failed ? (
+                    <p className="text-xl! text-[#FF0000]! mb-0! mr-auto">
+                        Email address or password is incorrect.{" "}
+                    </p>
+                ) : (
+                    <></>
+                )}
+                {fieldEmpty ? (
+                    <p className="text-xl! text-[#FF0000]! mb-0! mr-auto">
+                        Fields cannot be empty.{" "}
+                    </p>
+                ) : (
+                    <></>
+                )}
+                <div className="text-white text-2xl mb-8 flex">
                     <div className="flex flex-col items-center">
                         <label className="my-6">E-mail:</label>
                         <label className="my-6">Password:</label>
