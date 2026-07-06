@@ -17,6 +17,10 @@ import uuid
 load_dotenv()
 gemini_key = os.getenv("GEMINI_API_KEY")
 
+sysinstruct = (
+    "You are a helpful assistant, that's designed to assist the user in its problems."
+)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -67,19 +71,19 @@ async def promptFlashLite(
     db: AsyncSession = Depends(get_asyncsession),
     user: User = Depends(current_active_user),
 ):
+    print(session)
     res = await db.execute(select(Session).where(Session.sessionKey == session))
     rows = res.scalar_one_or_none()
     if rows == None:
+
         chat = gemini_client.aio.chats.create(
             model="gemini-2.5-flash",
-            config={
-                "system_instruction": "Output your message without any new-lines (\n) or text formatting (*text* / **text**)"
-            },
+            config={"system_instruction": sysinstruct},
         )
 
         chatsession = Session(
             data={"history": []},
-            sessionKey=uuid.uuid4(),
+            sessionKey=session,
             owner_id=user.id,
             sessionName=prompt.prompt,
         )
@@ -90,10 +94,8 @@ async def promptFlashLite(
         history = json.loads(rows.data["history"])
 
         chat = gemini_client.aio.chats.create(
-            model="gemini-2.5-flash-lite",
-            config={
-                "system_instruction": "Output your message without any new-lines (\n) or text formatting (*text* / **text**)"
-            },
+            model="gemini-2.5-flash",
+            config={"system_instruction": sysinstruct},
             history=[
                 {"role": msg["role"], "parts": [{"text": msg["text"]}]}
                 for msg in history
@@ -185,7 +187,7 @@ async def getUserSessions(
     sessions = []
     # return rows
     for i in rows:
-        print(i)
+
         sessions.append({"sKey": i.sessionKey, "sName": i.sessionName})
     return sessions
 

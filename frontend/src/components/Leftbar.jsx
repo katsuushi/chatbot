@@ -21,20 +21,19 @@ function Leftbar({
     }
 
     function handleActive() {
-        console.log("handleActive Runs")
+        console.log("handleActive Runs");
         if (active) {
-            setActive()
+            setActive();
         }
     }
 
-    function newChat() { 
+    function newChat() {
         sessionKey({ skey: "new", sname: "" });
         trigger(crypto.randomUUID());
     }
 
     function handleChange(skey) {
         const filtered = sessions.filter((session) => session.sKey !== skey);
-
         setSessions(filtered);
         sessionKey("undefined");
     }
@@ -44,7 +43,7 @@ function Leftbar({
             credentials: "include",
         });
         const res = await call.json();
-        setSessions(res);
+        setSessions(res.reverse());
         console.log(res);
     }
 
@@ -91,8 +90,11 @@ function Leftbar({
                         />
                     </button>
                 </h1>
-                <button 
-                    onClick={() => {newChat(); handleActive();}}
+                <button
+                    onClick={() => {
+                        newChat();
+                        handleActive();
+                    }}
                     className="text-2xl flex gap-x-2 items-center hover:bg-[#303030] active:bg-[#202020] px-2 py-2 rounded-xl"
                 >
                     {" "}
@@ -106,7 +108,9 @@ function Leftbar({
             <div className="h-[67%] text-white text-xl lg:text-2xl flex p-2 flex-col items-start overflow-y-scroll overflow-x-hidden [scrollbar-width:thin] [scrollbar-color:#000_#000] scrollbar-thumb-rounded-[32px] hover:[scrollbar-color:#292929_#000]">
                 {sessions.map((session) => (
                     <HistorySession
-                        onClick={() => {handleActive();}}
+                        onClick={() => {
+                            handleActive();
+                        }}
                         key={session.sKey}
                         skey={session.sKey}
                         sname={session.sName}

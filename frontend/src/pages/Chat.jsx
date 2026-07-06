@@ -29,6 +29,12 @@ function Chat() {
         }, 50);
     }
 
+    function initChatKey(data) {
+        console.log("chatkey data")
+        console.log(data)
+        setCurrentSession({skey: data.newSKey, sname: data.newSName})
+    }
+
     function handleSession(data) {
         setCurrentSession(data);
         console.log(data);
@@ -72,6 +78,7 @@ function Chat() {
                     sessionName={currentSession.sname}
                     trigger={trigger}
                     leftbarstate={handleLeftbar}
+                    initChatKey={initChatKey}
                 />
                 {burger ? (
                     <div className="bg-[#101010] rounded-3xl z-99999 fixed w-64 h-32 text-white bottom-24 left-96 flex flex-col justify-center items-center p-2 px-4">

@@ -3,12 +3,16 @@ import Bottombar from "./Bottombar";
 import LLmResponseBox from "./LLmResponseBox";
 import UserResponseBox from "./UserResponseBox";
 
-function Chatbox({ sessionKey, sessionName, trigger, leftbarstate }) {
+function Chatbox({ sessionKey, sessionName, trigger, leftbarstate, initChatKey }) {
     const [responses, setResponses] = useState([]);
     const [leftbar, setLeftbar] = useState(false);
     const [prevResponses, setPrevResponses] = useState([]);
     const [currentSession, setCurrentSession] = useState(sessionKey);
     const [loading, setLoading] = useState(true);
+
+    function testSession() {
+        console.log(sessionKey);
+    }
 
     // Handles submiting a prompt
     function handleResponse(data) {
@@ -18,6 +22,10 @@ function Chatbox({ sessionKey, sessionName, trigger, leftbarstate }) {
 
     if (sessionName == null) {
         sessionName = "undefined";
+    }
+
+    function initKey(data) {
+        initChatKey(data);
     }
 
     function debug1() {
@@ -92,8 +100,9 @@ function Chatbox({ sessionKey, sessionName, trigger, leftbarstate }) {
                     </h1>
                 </div>
                 <h1 className="xl:text-2xl lg:text-xl text-lg hidden sm:block text-gray-400!">
-                    {sessionName}
+                    {sessionKey}
                 </h1>
+                <button onClick={testSession}>Output session</button>
             </div>
             <div className="w-full max-h-full p-16 sm:my-8 px-4 sm:px-12 2xl:px-64 3xl:px-128 flex flex-col gap-y-8 xl:mt-12 text-lg md:text-xl xl:text-2xl">
                 {loading ? (
@@ -121,7 +130,11 @@ function Chatbox({ sessionKey, sessionName, trigger, leftbarstate }) {
                 )}
             </div>
 
-            <Bottombar response={handleResponse} session={sessionKey} />
+            <Bottombar
+                response={handleResponse}
+                session={sessionKey}
+                initKey={initKey}
+            />
             <div className="w-[100%] h-[15vh]"></div>
         </div>
     );

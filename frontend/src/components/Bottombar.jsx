@@ -1,6 +1,6 @@
 import { useState, useContext } from "react";
 import { SessionContext } from "../contexts/sessionContext";
-function Bottombar({ response, session, reload }) {
+function Bottombar({ response, session, reload, initKey }) {
     const [prompt, setPrompt] = useState("");
     let reloadSessions = false;
     const { loadFn } = useContext(SessionContext);
@@ -11,6 +11,7 @@ function Bottombar({ response, session, reload }) {
             session === undefined ||
             session == "undefined"
         ) {
+            console.log("generating a session key")
             session = crypto.randomUUID();
             reloadSessions = true;
         }
@@ -34,6 +35,7 @@ function Bottombar({ response, session, reload }) {
                 credentials: "include",
             },
         );
+
         const data = await result.json();
         response({
             prompt: prompt,
@@ -43,8 +45,8 @@ function Bottombar({ response, session, reload }) {
         console.log("sent data to response");
         setPrompt("");
         if (reloadSessions) {
-            console.log("OH");
             loadFn && loadFn();
+            initKey({ newSKey: session, newSName: prompt });
         }
     }
 
