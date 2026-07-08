@@ -9,6 +9,7 @@ function Login() {
 
     async function handleLogin() {
         setFailed(false);
+        setFieldEmpty(false)
         if (data.em === "" || data.ps === "" || data.cfps === "") {
             setFieldEmpty(true);
             return "Fields cannot be empty";

@@ -11,7 +11,7 @@ function Bottombar({ response, session, reload, initKey }) {
             session === undefined ||
             session == "undefined"
         ) {
-            console.log("generating a session key")
+            console.log("generating a session key");
             session = crypto.randomUUID();
             reloadSessions = true;
         }
@@ -35,12 +35,18 @@ function Bottombar({ response, session, reload, initKey }) {
                 credentials: "include",
             },
         );
-
+        if (!result.ok) {
+            response({
+                prompt: prompt,
+                response: "A problem occured. Please try again later.",
+            });
+        } else {
+            response({
+                prompt: prompt,
+                response: data,
+            });
+        }
         const data = await result.json();
-        response({
-            prompt: prompt,
-            response: data,
-        });
         console.log(data);
         console.log("sent data to response");
         setPrompt("");
@@ -61,7 +67,7 @@ function Bottombar({ response, session, reload, initKey }) {
     }
 
     return (
-        <div className="md:right-0 md:left-80 w-[100%] md:w-auto lg:left-128 min-h-[15vh] flex flex-col items-center justify-center py-2 gap-y-4.5 fixed bottom-0 bg-[#202020]">
+        <div className="z-1 md:right-0 md:left-80 w-[100%] md:w-auto lg:left-128 min-h-[15vh] flex flex-col items-center justify-center py-2 gap-y-4.5 fixed bottom-0 bg-[#202020]">
             <div className="w-[75%] 2xl:w-[50%] flex items-center bg-[#303030] rounded-xl text-center h-24 max-h-64">
                 <textarea
                     onChange={(e) => setPrompt(e.target.value)}

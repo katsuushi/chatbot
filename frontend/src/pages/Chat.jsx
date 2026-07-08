@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { SessionProvider } from "../contexts/sessionContext";
 import Chatbox from "../components/Chatbox";
 import Leftbar from "../components/Leftbar";
-
+import SearchSessions from "../components/searchSessions.jsx";
 function Chat() {
     const [currentSession, setCurrentSession] = useState({
         skey: "undefined",
@@ -13,7 +13,24 @@ function Chat() {
     const [burger, setBurger] = useState(false);
     const [reload, setReload] = useState(0);
     const [trigger, setTrigger] = useState("");
+    const [searchToggle, setSearchToggle] = useState(false);
+    const [userSessions, setUserSessions] = useState([]);
     const navigate = useNavigate();
+
+    useEffect(() => {
+        async function loadAllSessions() {
+            const call = await fetch(
+                "http://localhost:8000/api/getUserSessions",
+                {
+                    credentials: "include",
+                },
+            );
+            const res = await call.json();
+            setUserSessions(res.reverse());
+            console.log(res);
+        }
+        loadAllSessions();
+    }, []);
 
     async function handleLogout() {
         const call = await fetch("http://localhost:8000/auth/cookie/logout", {
@@ -23,6 +40,10 @@ function Chat() {
         return navigate("/login", { replace: true });
     }
 
+    function handleSearchToggle(data) {
+        setSearchToggle(data);
+    }
+
     function handleLeftbar() {
         const timer = setTimeout(() => {
             setLeftbar(!leftbar);
@@ -30,9 +51,9 @@ function Chat() {
     }
 
     function initChatKey(data) {
-        console.log("chatkey data")
-        console.log(data)
-        setCurrentSession({skey: data.newSKey, sname: data.newSName})
+        console.log("chatkey data");
+        console.log(data);
+        setCurrentSession({ skey: data.newSKey, sname: data.newSName });
     }
 
     function handleSession(data) {
@@ -72,6 +93,8 @@ function Chat() {
                     burger={handleBurger}
                     active={leftbar}
                     setActive={handleLeftbar}
+                    toggleSearch={handleSearchToggle}
+                    currentSearchState={searchToggle}
                 />
                 <Chatbox
                     sessionKey={currentSession.skey}
@@ -96,6 +119,15 @@ function Chat() {
                             Log out
                         </button>
                     </div>
+                ) : (
+                    <></>
+                )}
+                {searchToggle ? (
+                    <SearchSessions
+                        disablePopup={handleSearchToggle}
+                        userSessions={userSessions}
+                        sessionInfo={handleSession}
+                    ></SearchSessions>
                 ) : (
                     <></>
                 )}

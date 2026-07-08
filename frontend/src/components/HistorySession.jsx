@@ -25,7 +25,7 @@ function HistorySession({
     }
 
     return (
-        <div className="max-w-full min-w-full flex" onClick={onClick}>
+        <div className="max-w-full min-w-full flex">
             <button
                 onClick={handleSwitch}
                 className="truncate h-12 overflow-hidden nowrap max-w-[80%] xl:max-w-[85%] mx-2 text-left rounded-xl px-2 active:bg-[#202020] hover:bg-[#303030] w-full"

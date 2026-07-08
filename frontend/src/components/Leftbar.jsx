@@ -9,10 +9,13 @@ function Leftbar({
     burger,
     active,
     setActive,
+    toggleSearch,
+    currentSearchState,
 }) {
     const [sessions, setSessions] = useState([]);
     const [userData, setUserData] = useState({ em: "", us: "" });
     const navigate = useNavigate();
+    const [searchToggle, setSearchToggle] = useState(false);
     const { setLoadFn } = useContext(SessionContext);
     function handleSwitch(data) {
         console.log(sessions);
@@ -25,6 +28,11 @@ function Leftbar({
         if (active) {
             setActive();
         }
+    }
+
+    function handleSearch() {
+        toggleSearch(!currentSearchState);
+        setSearchToggle(!currentSearchState);
     }
 
     function newChat() {
@@ -71,9 +79,9 @@ function Leftbar({
 
     return (
         <div
-            className={`${active ? "fixed sm:max-w-lg! max-w-80!" : "hidden"} z-999 max-h-[100dvh]  md:fixed md:block md:max-w-80 lg:min-w-lg flex-col left-0 top-0 bottom-0 bg-black`}
+            className={`${active ? "fixed sm:max-w-lg! max-w-80!" : "hidden"} z-30 max-h-[100dvh]  md:fixed md:block md:max-w-80 lg:min-w-lg left-0 top-0 bottom-0 bg-black`}
         >
-            <div className=" h-[20%] text-white p-4">
+            <div className=" xl:h-[25%] h-[27%] text-white p-4">
                 <h1 className="md:text-3xl text-2xl text-white flex gap-x-2 items-center  ">
                     <img
                         src="../../public/robot.png"
@@ -104,8 +112,15 @@ function Leftbar({
                     />
                     <p>New Chat</p>
                 </button>
+                <button
+                    onClick={handleSearch}
+                    className="text-2xl flex gap-x-2 items-center hover:bg-[#303030] active:bg-[#202020] px-2 py-2 rounded-xl"
+                >
+                    <img src="./search.png" className="w-[4.75%] h-[5%]" />
+                    <p>Search</p>
+                </button>
             </div>
-            <div className="h-[67%] text-white text-xl lg:text-2xl flex p-2 flex-col items-start overflow-y-scroll overflow-x-hidden [scrollbar-width:thin] [scrollbar-color:#000_#000] scrollbar-thumb-rounded-[32px] hover:[scrollbar-color:#292929_#000]">
+            <div className="xl:h-[62%] h-[60%]  text-white text-xl lg:text-2xl flex p-2 flex-col items-start overflow-y-scroll overflow-x-hidden [scrollbar-width:thin] [scrollbar-color:#000_#000] scrollbar-thumb-rounded-[32px] hover:[scrollbar-color:#292929_#000]">
                 {sessions.map((session) => (
                     <HistorySession
                         onClick={() => {

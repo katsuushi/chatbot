@@ -8,13 +8,14 @@ function Register() {
 
     async function handleRegister() {
         setPasswordMatch(false);
+        setFieldEmpty(false)
         console.log(data);
         if (data.ps != data.cfps) {
             setPasswordMatch(true);
             return "Passwords do not match.";
         }
 
-        if (data.em === "" || data.ps === "" || data.cfps === "") {
+        if (data.em === '' || data.ps === '' || data.cfps === '') {
             setFieldEmpty(true);
             return "Fields cannot be empty";
         }
@@ -85,7 +86,7 @@ function Register() {
                     <></>
                 )}
                 {registered ? (
-                    <p className="text-xl! text-[#FF0000]! mb-0! mr-auto">
+                    <p className="text-xl! text-[#00ff00]! mb-0! mr-auto">
                         User successfully registered.
                     </p>
                 ) : (

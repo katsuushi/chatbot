@@ -192,6 +192,24 @@ async def getUserSessions(
     return sessions
 
 
+@app.get("/api/searchSessions")
+async def searchSessions(
+    query: str,
+    db: AsyncSession = Depends(get_asyncsession),
+    user: User = Depends(current_active_user),
+):
+    call = await db.execute(
+        select(Session).where(
+            Session.owner_id == user.id, Session.sessionName.ilike(f"%{query}%")
+        )
+    )
+    rows = call.scalars().all()
+    data = []
+    for i in rows:
+        data.append({"sKey": i.sessionKey, "sName": i.sessionName})
+    return data
+
+
 @app.get("/api/testUser")
 async def testUser(user: User = Depends(current_active_user)):
     return {"message": "Data", "username": user.email, "id": user.id}
