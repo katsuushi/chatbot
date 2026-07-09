@@ -1,4 +1,5 @@
 import uuid
+
 from fastapi_users import schemas
 from pydantic import BaseModel
 
@@ -17,3 +18,8 @@ class UserUpdate(schemas.BaseUserUpdate):
 
 class Prompt(BaseModel):
     prompt: str
+
+
+class TemporaryPrompt(BaseModel):
+    prompt: str
+    history: list

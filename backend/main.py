@@ -10,7 +10,7 @@ from google import genai
 from sqlalchemy import select
 
 from db import AsyncSession, Session, User, create_db_and_tables, get_asyncsession
-from schemas import UserCreate, UserRead, UserUpdate, Prompt
+from schemas import UserCreate, UserRead, UserUpdate, Prompt, TemporaryPrompt
 from users import cookie_backend, bearer_backend, current_active_user, fastapi_users
 import uuid
 
@@ -115,6 +115,27 @@ async def promptFlashLite(
     }
 
     await db.commit()
+    return response.text
+
+
+@app.post("/api/promptTemporary")
+async def promptTemporary(
+    schema: TemporaryPrompt,
+    db: AsyncSession = Depends(get_asyncsession),
+    user: User = Depends(current_active_user),
+):
+    history = schema.history
+
+    chat = gemini_client.aio.chats.create(
+        model="gemini-2.5-flash",
+        config={"system_instruction": sysinstruct},
+        history=[
+            {"role": msg["role"], "parts": [{"text": msg["text"]}]} for msg in history
+        ],
+    )
+
+    response = await chat.send_message(schema.prompt)
+
     return response.text
 
 

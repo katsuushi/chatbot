@@ -14,6 +14,7 @@ function Chatbox({
     const [leftbar, setLeftbar] = useState(false);
     const [prevResponses, setPrevResponses] = useState([]);
     const [currentSession, setCurrentSession] = useState(sessionKey);
+    const [temporary, setTemporary] = useState(false);
     const [loading, setLoading] = useState(true);
 
     function testSession() {
@@ -24,6 +25,10 @@ function Chatbox({
     function handleResponse(data) {
         console.log(data);
         setResponses([...responses, data]);
+    }
+
+    function handleTemporary() {
+        setTemporary(!temporary);
     }
 
     if (sessionName == null) {
@@ -92,22 +97,30 @@ function Chatbox({
 
     return (
         <div className="bg-[#202020] w-full min-h-[100dvh] text-white flex flex-col items-center justify-between text-2xl">
-            <div className="w-full md:left-80 lg:left-128 min-h-[8vh] p-4 bg-black flex items-center fixed gap-x-4 right-0">
-                <div className="flex items-center">
-                    <button className="" onClick={handleLeftbar}>
-                        <img
-                            src="../../public/hamburger.png"
-                            className="w-[24px] mr-6 block md:hidden"
-                        />
-                    </button>
+            <div className="w-full md:w-auto md:left-80 lg:left-128 min-h-[8vh] p-4 bg-black flex items-center justify-between fixed gap-x-4 right-0">
+                <div className="flex items-center gap-x-4">
+                    <div className="flex items-center">
+                        <button className="" onClick={handleLeftbar}>
+                            <img
+                                src="../../public/hamburger.png"
+                                className="w-[24px] mr-6 block md:hidden"
+                            />
+                        </button>
 
-                    <h1 className="xl:text-3xl lg:text-2xl text-xl text-white">
-                        ChatBot
+                        <h1 className="xl:text-3xl lg:text-2xl text-xl text-white">
+                            ChatBot
+                        </h1>
+                    </div>
+                    <h1 className="xl:text-2xl lg:text-xl text-lg hidden sm:block text-gray-400!">
+                        {sessionName}
                     </h1>
                 </div>
-                <h1 className="xl:text-2xl lg:text-xl text-lg hidden sm:block text-gray-400!">
-                    {sessionName}
-                </h1>
+                <button
+                    onClick={handleTemporary}
+                    className="text-white! text-2xl"
+                >
+                    T
+                </button>
             </div>
             <div className="w-full max-h-full p-16 sm:my-8 px-4 sm:px-12 2xl:px-64 3xl:px-128 flex flex-col gap-y-8 xl:mt-12 text-lg md:text-xl xl:text-2xl">
                 {loading ? (
@@ -117,6 +130,15 @@ function Chatbox({
                             <LLmResponseBox text={res.response} />
                         </div>
                     ))
+                ) : temporary & (responses.length == 0) ? (
+                    <div className="h-[50vh] mt-24 text-center flex flex-col justify-center items-center">
+                        {" "}
+                        <h1>Temporary chat</h1>
+                        <p className="text-lg! text-gray-400! mt-4">
+                            This conversation won't be saved, nor kept in our
+                            servers.
+                        </p>
+                    </div>
                 ) : responses.length == 0 ? (
                     <div className="h-[50vh] mt-16 text-center flex justify-center items-center">
                         {" "}
@@ -139,6 +161,7 @@ function Chatbox({
                 response={handleResponse}
                 session={sessionKey}
                 initKey={initKey}
+                temporaryState={temporary}
             />
             <div className="w-[100%] h-[15vh]"></div>
         </div>

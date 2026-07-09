@@ -1,11 +1,13 @@
 import { useState, useContext } from "react";
 import { SessionContext } from "../contexts/sessionContext";
-function Bottombar({ response, session, reload, initKey }) {
+function Bottombar({ response, session, temporaryState, initKey }) {
     const [prompt, setPrompt] = useState("");
     let reloadSessions = false;
     const { loadFn } = useContext(SessionContext);
+    const [tempHistory, setTempHistory] = useState([]);
 
     async function promptSubmit() {
+        console.log(temporaryState);
         if (
             session == "new" ||
             session === undefined ||
@@ -22,35 +24,65 @@ function Bottombar({ response, session, reload, initKey }) {
         const promptarea = document.getElementById("textpromptarea");
         promptarea.value = "";
         console.log("fetching with this session: " + session);
-        const result = await fetch(
-            `http://localhost:8000/api/promptFlashLite?session=${session}`,
-            {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
+        if (temporaryState === false) {
+            const result = await fetch(
+                `http://localhost:8000/api/promptFlashLite?session=${session}`,
+                {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                        prompt: prompt,
+                    }),
+                    credentials: "include",
                 },
-                body: JSON.stringify({
+            );
+
+            if (!result.ok) {
+                response({
                     prompt: prompt,
-                }),
-                credentials: "include",
-            },
-        );
-        if (!result.ok) {
-            response({
-                prompt: prompt,
-                response: "A problem occured. Please try again later.",
-            });
+                    response: "A problem occured. Please try again later.",
+                });
+            } else {
+                const data = await result.json();
+
+                response({
+                    prompt: prompt,
+                    response: data,
+                });
+            }
         } else {
+            console.log("temporary detected");
+            const call = await fetch(
+                "http://localhost:8000/api/promptTemporary",
+                {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    credentials: "include",
+                    body: JSON.stringify({
+                        prompt: prompt,
+                        history: tempHistory,
+                    }),
+                },
+            );
+            const res = await call.json();
             response({
                 prompt: prompt,
-                response: data,
+                response: res,
             });
+            setTempHistory((prev) => [
+                ...prev,
+                { role: "user", text: prompt },
+                { role: "model", text: res },
+            ]);
         }
-        const data = await result.json();
-        console.log(data);
+
         console.log("sent data to response");
         setPrompt("");
-        if (reloadSessions) {
+        if (reloadSessions && !temporaryState) {
             loadFn && loadFn();
             initKey({ newSKey: session, newSName: prompt });
         }
