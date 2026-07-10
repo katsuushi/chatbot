@@ -9,6 +9,7 @@ function Chatbox({
     trigger,
     leftbarstate,
     initChatKey,
+    triggerTemp,
 }) {
     const [responses, setResponses] = useState([]);
     const [leftbar, setLeftbar] = useState(false);
@@ -16,6 +17,7 @@ function Chatbox({
     const [currentSession, setCurrentSession] = useState(sessionKey);
     const [temporary, setTemporary] = useState(false);
     const [loading, setLoading] = useState(true);
+    const [tempHistory, setTempHistory] = useState([]);
 
     function testSession() {
         console.log(sessionKey);
@@ -28,7 +30,25 @@ function Chatbox({
     }
 
     function handleTemporary() {
+        if (sessionKey === "temp") {
+            // triggerTemp is a prop that calls a function which changes the session key to the value
+            triggerTemp("new")
+            setTempHistory([])
+        } else {
+            triggerTemp("temp")
+        }
         setTemporary(!temporary);
+
+    }
+
+    function handleTemporaryResponse(prompt, res) {
+
+        setTempHistory((prev) => [
+            ...prev,
+            { role: "user", text: prompt },
+            { role: "model", text: res },
+        ]);
+
     }
 
     if (sessionName == null) {
@@ -40,7 +60,7 @@ function Chatbox({
     }
 
     function debug1() {
-        console.log(responses);
+        console.log(temporary);
     }
 
     function timerReset(timer) {
@@ -60,7 +80,8 @@ function Chatbox({
             if (
                 sessionKey == "new" ||
                 sessionKey === undefined ||
-                sessionKey == "undefined"
+                sessionKey == "undefined" ||
+                sessionKey === "temp"
             ) {
                 setLoading(false);
                 return;
@@ -110,6 +131,7 @@ function Chatbox({
                         <h1 className="xl:text-3xl lg:text-2xl text-xl text-white">
                             ChatBot
                         </h1>
+
                     </div>
                     <h1 className="xl:text-2xl lg:text-xl text-lg hidden sm:block text-gray-400!">
                         {sessionName}
@@ -117,9 +139,11 @@ function Chatbox({
                 </div>
                 <button
                     onClick={handleTemporary}
-                    className="text-white! text-2xl"
+                    className="text-white! text-2xl rounded-4xl hover:bg-[#303030] hover:cursor-pointer active:bg-[#404040] p-2 mr-2"
                 >
-                    T
+                    {sessionKey === "temp" ? <img src="./cloud.png" className="w-[32px]" /> : <img src="./cloud2.png" className="w-[32px]" />}
+
+
                 </button>
             </div>
             <div className="w-full max-h-full p-16 sm:my-8 px-4 sm:px-12 2xl:px-64 3xl:px-128 flex flex-col gap-y-8 xl:mt-12 text-lg md:text-xl xl:text-2xl">
@@ -130,7 +154,7 @@ function Chatbox({
                             <LLmResponseBox text={res.response} />
                         </div>
                     ))
-                ) : temporary & (responses.length == 0) ? (
+                ) : sessionKey === "temp" & (responses.length == 0) ? (
                     <div className="h-[50vh] mt-24 text-center flex flex-col justify-center items-center">
                         {" "}
                         <h1>Temporary chat</h1>
@@ -161,7 +185,8 @@ function Chatbox({
                 response={handleResponse}
                 session={sessionKey}
                 initKey={initKey}
-                temporaryState={temporary}
+                temporaryHistory={tempHistory}
+                appendTempHist={handleTemporaryResponse}
             />
             <div className="w-[100%] h-[15vh]"></div>
         </div>

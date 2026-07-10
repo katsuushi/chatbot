@@ -31,7 +31,7 @@ function SearchSessions({ disablePopup, userSessions, onClose, sessionInfo }) {
             console.log("fired log");
             const res = await call.json();
             console.log(res);
-            setSearchRes(res);
+            setSearchRes(res.reverse());
         }, 250);
         console.log(searchRes);
     }
@@ -61,27 +61,27 @@ function SearchSessions({ disablePopup, userSessions, onClose, sessionInfo }) {
                 <div className="max-h-[70%] overflow-y-scroll overflow-x-hidden [scrollbar-width:thin] [scrollbar-color:#000_#000] scrollbar-thumb-rounded-[32px] hover:[scrollbar-color:#292929_#000]">
                     {field.trim() === ""
                         ? userSessions.map((session) => (
-                              <SearchResult
-                                  key={session.sKey}
-                                  sKey={session.sKey}
-                                  sName={session.sName}
-                                  passSession={(data) => {
-                                      (handleSessionChange(data),
-                                          setTimeout(() => handleCancel(), 50));
-                                  }}
-                              ></SearchResult>
-                          ))
+                            <SearchResult
+                                key={session.sKey}
+                                sKey={session.sKey}
+                                sName={session.sName}
+                                passSession={(data) => {
+                                    (handleSessionChange(data),
+                                        setTimeout(() => handleCancel(), 50));
+                                }}
+                            ></SearchResult>
+                        ))
                         : searchRes.map((session) => (
-                              <SearchResult
-                                  key={session.sKey}
-                                  sKey={session.sKey}
-                                  sName={session.sName}
-                                  passSession={(data) => {
-                                      (handleSessionChange(data),
-                                          setTimeout(() => handleCancel(), 50));
-                                  }}
-                              ></SearchResult>
-                          ))}
+                            <SearchResult
+                                key={session.sKey}
+                                sKey={session.sKey}
+                                sName={session.sName}
+                                passSession={(data) => {
+                                    (handleSessionChange(data),
+                                        setTimeout(() => handleCancel(), 50));
+                                }}
+                            ></SearchResult>
+                        ))}
                 </div>
             </div>
         </div>

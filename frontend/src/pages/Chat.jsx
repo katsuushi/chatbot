@@ -50,6 +50,10 @@ function Chat() {
         }, 50);
     }
 
+    function handleTriggerTemp(data) {
+        setCurrentSession({ skey: data, sname: "" })
+    }
+
     function initChatKey(data) {
         console.log("chatkey data");
         console.log(data);
@@ -102,6 +106,7 @@ function Chat() {
                     trigger={trigger}
                     leftbarstate={handleLeftbar}
                     initChatKey={initChatKey}
+                    triggerTemp={handleTriggerTemp}
                 />
                 {burger ? (
                     <div className="bg-[#101010] rounded-3xl z-99999 fixed w-64 h-32 text-white bottom-24 left-96 flex flex-col justify-center items-center p-2 px-4">
