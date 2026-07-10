@@ -21,7 +21,6 @@ sysinstruct = (
     "You are a helpful assistant, that's designed to assist the user in its problems."
 )
 
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await create_db_and_tables()
@@ -74,7 +73,7 @@ async def promptFlashLite(
     print(session)
     res = await db.execute(select(Session).where(Session.sessionKey == session))
     rows = res.scalar_one_or_none()
-    if rows == None:
+    if rows is None:
 
         chat = gemini_client.aio.chats.create(
             model="gemini-2.5-flash",
@@ -92,7 +91,6 @@ async def promptFlashLite(
         rows = chatsession
     else:
         history = json.loads(rows.data["history"])
-
         chat = gemini_client.aio.chats.create(
             model="gemini-2.5-flash",
             config={"system_instruction": sysinstruct},
