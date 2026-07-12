@@ -23,3 +23,8 @@ class Prompt(BaseModel):
 class TemporaryPrompt(BaseModel):
     prompt: str
     history: list
+
+class Reprompt(BaseModel):
+    sessionKey: uuid.UUID
+    iteration: int
+    newPrompt: str

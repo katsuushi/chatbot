@@ -10,7 +10,7 @@ from google import genai
 from sqlalchemy import select
 
 from db import AsyncSession, Session, User, create_db_and_tables, get_asyncsession
-from schemas import UserCreate, UserRead, UserUpdate, Prompt, TemporaryPrompt
+from schemas import UserCreate, UserRead, UserUpdate, Prompt, TemporaryPrompt, Reprompt
 from users import cookie_backend, bearer_backend, current_active_user, fastapi_users
 import uuid
 
@@ -135,6 +135,62 @@ async def promptTemporary(
     response = await chat.send_message(schema.prompt)
 
     return response.text
+
+@app.post("/api/reprompt")
+async def reprompt(
+    schema: Reprompt,
+    user: User = Depends(current_active_user),
+    db: AsyncSession = Depends(get_asyncsession)
+):
+    # Get the session
+    result = await db.execute(select(Session).where(Session.sessionKey == schema.sessionKey))
+    session = result.scalar_one_or_none()
+    if session is None:
+        raise HTTPException(status_code=404, detail="Couldn't find the requested session")
+    else:
+        # Get the history via from session.data
+        history = json.loads(session.data["history"])
+        iteration = schema.iteration * 2
+        newBranch = history[:iteration] # newBranch is history till the requested message (it * 2 because history alternates {user}, {model})
+
+        # Send the request with the history being newBranch
+        chat = gemini_client.aio.chats.create(
+            model="gemini-2.5-flash",
+            config={"system_instruction": sysinstruct},
+            history=[
+                {"role": msg["role"], "parts": [{"text": msg["text"]}]}
+                for msg in newBranch
+            ],
+        )
+
+        response = await chat.send_message(schema.newPrompt)
+
+        # Because chat.get_history() already returns the new branch we don't have to change anything 
+        session.data = {
+            **session.data,
+            "history": json.dumps(
+                [
+                    {"role": msg.role, "text": msg.parts[0].text}
+                    for msg in chat.get_history()
+                ]
+            ),
+        }
+
+        newBranchData = json.loads(session.data["history"])
+        newBranch = []
+        for i in range(0, len(newBranchData), 2):
+            newBranch.append({
+                "prompt": newBranchData[i]["text"],
+                "response": newBranchData[i+1]["text"]
+            })
+
+        await db.commit()
+
+
+
+        return newBranch 
+
+        # This WILL need some readjustments when we are going to implement multiple conversation branch support
 
 
 @app.get("/api/loadSession")
