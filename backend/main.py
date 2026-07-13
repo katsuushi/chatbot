@@ -10,7 +10,7 @@ from google import genai
 from sqlalchemy import select
 
 from db import AsyncSession, Session, User, create_db_and_tables, get_asyncsession
-from schemas import UserCreate, UserRead, UserUpdate, Prompt, TemporaryPrompt, Reprompt
+from schemas import UserCreate, UserRead, UserUpdate, Prompt, TemporaryPrompt, Reprompt, RepromptTemporary
 from users import cookie_backend, bearer_backend, current_active_user, fastapi_users
 import uuid
 
@@ -76,7 +76,7 @@ async def promptFlashLite(
     if rows is None:
 
         chat = gemini_client.aio.chats.create(
-            model="gemini-2.5-flash",
+            model="gemini-3.1-flash-lite",
             config={"system_instruction": sysinstruct},
         )
 
@@ -92,7 +92,7 @@ async def promptFlashLite(
     else:
         history = json.loads(rows.data["history"])
         chat = gemini_client.aio.chats.create(
-            model="gemini-2.5-flash",
+            model="gemini-3.1-flash-lite",
             config={"system_instruction": sysinstruct},
             history=[
                 {"role": msg["role"], "parts": [{"text": msg["text"]}]}
@@ -122,10 +122,16 @@ async def promptTemporary(
     db: AsyncSession = Depends(get_asyncsession),
     user: User = Depends(current_active_user),
 ):
-    history = schema.history
+    # Because LLm handles the history dict a bit different than our frontend we convert it
+    history = []
+    for i in schema.history:
+        history.append({"role": "user", "text": i["prompt"]})
+        history.append({"role": "model", "text": i["response"]})
+
+
 
     chat = gemini_client.aio.chats.create(
-        model="gemini-2.5-flash",
+        model="gemini-3.1-flash-lite",
         config={"system_instruction": sysinstruct},
         history=[
             {"role": msg["role"], "parts": [{"text": msg["text"]}]} for msg in history
@@ -133,6 +139,18 @@ async def promptTemporary(
     )
 
     response = await chat.send_message(schema.prompt)
+
+    # convert the history into a frontend friendly format so we don't write more code in the frontend
+    formatted = []
+    for i in range(0,len(history),2):
+        formatted.append({
+                "prompt": history[i]["text"],
+                "response": history[i+1]["text"]
+            })
+
+    formatted.append({"prompt": schema.prompt, "response": response.text})
+
+
 
     return response.text
 
@@ -192,6 +210,49 @@ async def reprompt(
 
         # This WILL need some readjustments when we are going to implement multiple conversation branch support
 
+@app.post("/api/repromptTemporary")
+async def repromptTemporary(
+    schema: RepromptTemporary,
+    user: User = Depends(current_active_user),
+):
+    history = schema.history
+    iteration = schema.iteration # Due to how frontend handles the sessions' conversation array we don't need to multiply by 2
+    newBranch = history[:iteration] 
+   
+    print(history)
+
+
+    # Because LLm handles the history dict a bit different than our frontend we convert it
+    history = []
+    for i in newBranch:
+        history.append({"role": "user", "text": i["prompt"]})
+        history.append({"role": "model", "text": i["response"]})
+
+
+    chat = gemini_client.aio.chats.create(
+        model="gemini-3.1-flash-lite",
+        config={"system_instruction": sysinstruct},
+        history=[
+            {"role": msg["role"], "parts": [{"text": msg["text"]}]}
+            for msg in history
+        ],
+    )
+
+    response = await chat.send_message(schema.newPrompt)
+
+    # we can now convert it into a frontend friendly format so we don't write more code in the frontend
+    newBranch = []
+    for i in range(0,len(history),2):
+        newBranch.append({
+                "prompt": history[i]["text"],
+                "response": history[i+1]["text"]
+            })
+
+    newBranch.append({"prompt": schema.newPrompt, "response": response.text})
+
+    return newBranch 
+
+    
 
 @app.get("/api/loadSession")
 async def loadSession(

@@ -28,3 +28,8 @@ class Reprompt(BaseModel):
     sessionKey: uuid.UUID
     iteration: int
     newPrompt: str
+
+class RepromptTemporary(BaseModel):
+    iteration: int
+    newPrompt: str
+    history: list
