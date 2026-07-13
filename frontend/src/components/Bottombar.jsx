@@ -1,6 +1,6 @@
 import { useState, useContext } from "react";
 import { SessionContext } from "../contexts/sessionContext";
-function Bottombar({ response, session, temporaryHistory, initKey, appendTempHist }) {
+function Bottombar({ response, session, temporaryHistory, initKey }) {
     const [prompt, setPrompt] = useState("");
     let reloadSessions = false;
     const { loadFn } = useContext(SessionContext);
@@ -14,6 +14,9 @@ function Bottombar({ response, session, temporaryHistory, initKey, appendTempHis
             console.log("generating a session key");
             session = crypto.randomUUID();
             reloadSessions = true;
+        }
+        if (prompt === "") {
+            throw new Error
         }
         response({
             prompt: prompt,
@@ -72,8 +75,7 @@ function Bottombar({ response, session, temporaryHistory, initKey, appendTempHis
                     prompt: prompt,
                     response: res,
                 });
-                appendTempHist(prompt, res)
-                
+
             }
 
             if (reloadSessions && session !== "temp") {

@@ -1,0 +1,5 @@
+Some stuff here that I should consider revisiting:
+
+- When typing while the llm is generating text you can't send a message when it's done cause its considered empty
+- Streaming would be nice
+

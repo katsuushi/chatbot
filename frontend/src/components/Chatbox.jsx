@@ -26,7 +26,12 @@ function Chatbox({
     // Handles submiting a prompt
     function handleResponse(data) {
         console.log(data);
-        setResponses([...responses, data]);
+        if (sessionKey != "temp") {
+            setResponses([...responses, data]);
+
+        } else {
+            setTempHistory([...tempHistory, data])
+        }
     }
 
     function handleTemporary() {
@@ -41,15 +46,71 @@ function Chatbox({
 
     }
 
-    function handleTemporaryResponse(prompt, res) {
+    async function handleReprompt(dialogdata) {
+        // dialogdata contains the id (number of the messages' place in the conversation) and the new prompt
+        if (dialogdata.newPrompt === "") {
+            throw new Error("Field cannot be empty")
+        }
 
-        setTempHistory((prev) => [
-            ...prev,
-            { role: "user", text: prompt },
-            { role: "model", text: res },
-        ]);
 
+
+        if (sessionKey != "temp") {
+            const newBranch = responses.slice(0, dialogdata.Iteration)
+            setResponses([
+                ...newBranch, { "prompt": dialogdata.newPrompt, "response": "01000011" }
+            ])
+            const call = await fetch("http://localhost:8000/api/reprompt", {
+                method: "POST",
+                credentials: "include",
+                headers: {
+                    "Content-type": "application/json"
+                },
+                body: JSON.stringify({
+                    "sessionKey": sessionKey,
+                    "iteration": dialogdata.Iteration,
+                    "newPrompt": dialogdata.newPrompt
+                })
+            })
+            if (call.ok) {
+                const res = await call.json()
+                console.log(res)
+                setResponses(res)
+            }
+        }
+
+        else {
+            console.log("calling temp with this history")
+            console.log(tempHistory)
+            const newBranch = tempHistory.slice(0, dialogdata.Iteration)
+
+            setTempHistory([
+                ...newBranch, { "prompt": dialogdata.newPrompt, "response": "01000011" }
+            ])
+            const call = await fetch("http://localhost:8000/api/repromptTemporary", {
+                method: "POST",
+                credentials: "include",
+                headers: {
+                    "Content-type": "application/json"
+                },
+                body: JSON.stringify({
+                    "iteration": dialogdata.Iteration,
+                    "newPrompt": dialogdata.newPrompt,
+                    "history": tempHistory
+                }),
+            })
+            if (call.ok) {
+                const res = await call.json()
+                console.log(res)
+                setTempHistory(res)
+            }
+            else {
+                const res = await call.json()
+                console.log(res)
+            }
+
+        }
     }
+
 
     if (sessionName == null) {
         sessionName = "undefined";
@@ -70,6 +131,7 @@ function Chatbox({
 
     // Loads Session (currently only loading default)
     useEffect(() => {
+        setTempHistory([])
         setLoading(true);
         setPrevResponses(responses);
         setResponses([]);
@@ -107,6 +169,7 @@ function Chatbox({
                     timerReset(timer);
                 }, 10);
             }
+            console.log(responses)
         }
         loadSession();
     }, [sessionKey, trigger]);
@@ -150,11 +213,11 @@ function Chatbox({
                 {loading ? (
                     prevResponses.map((res, i) => (
                         <div key={i}>
-                            <UserResponseBox text={res.prompt} />
+                            <UserResponseBox responseid={i} text={res.prompt} repromptCall={handleReprompt} />
                             <LLmResponseBox text={res.response} />
                         </div>
                     ))
-                ) : sessionKey === "temp" & (responses.length == 0) ? (
+                ) : sessionKey === "temp" & (tempHistory.length == 0) ? (
                     <div className="h-[50vh] mt-24 text-center flex flex-col justify-center items-center">
                         {" "}
                         <h1>Temporary chat</h1>
@@ -163,6 +226,16 @@ function Chatbox({
                             servers.
                         </p>
                     </div>
+                ) : sessionKey === "temp" & (tempHistory.length != 0) ? (
+                    console.log(tempHistory),
+                    tempHistory.map(
+                        (res, i) => (
+                            <div key={i}>
+                                <UserResponseBox responseid={i} text={res.prompt} repromptCall={handleReprompt} />
+                                <LLmResponseBox text={res.response} />
+                            </div>
+                        )
+                    )
                 ) : responses.length == 0 ? (
                     <div className="h-[50vh] mt-16 text-center flex justify-center items-center">
                         {" "}
@@ -172,11 +245,10 @@ function Chatbox({
                     responses.map(
                         (res, i) => (
                             <div key={i}>
-                                <UserResponseBox text={res.prompt} />
+                                <UserResponseBox responseid={i} text={res.prompt} repromptCall={handleReprompt} />
                                 <LLmResponseBox text={res.response} />
                             </div>
                         ),
-                        <h1>test</h1>,
                     )
                 )}
             </div>
@@ -186,7 +258,7 @@ function Chatbox({
                 session={sessionKey}
                 initKey={initKey}
                 temporaryHistory={tempHistory}
-                appendTempHist={handleTemporaryResponse}
+
             />
             <div className="w-[100%] h-[15vh]"></div>
         </div>

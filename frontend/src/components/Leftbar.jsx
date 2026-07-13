@@ -81,7 +81,7 @@ function Leftbar({
         <div
             className={`${active ? "fixed sm:max-w-lg! max-w-80!" : "hidden"} z-30 max-h-[100dvh]  md:fixed md:block md:max-w-80 lg:min-w-lg left-0 top-0 bottom-0 bg-black`}
         >
-            <div className=" xl:h-[25%] h-[27%] text-white p-4">
+            <div className=" xl:h-[25%] 2xl:h-[20%] h-[27%] text-white p-4">
                 <h1 className="md:text-3xl text-2xl text-white flex gap-x-2 items-center  ">
                     <img
                         src="../../public/robot.png"
@@ -120,7 +120,7 @@ function Leftbar({
                     <p>Search</p>
                 </button>
             </div>
-            <div className="xl:h-[62%] h-[60%]  text-white text-xl lg:text-2xl flex p-2 flex-col items-start overflow-y-scroll overflow-x-hidden [scrollbar-width:thin] [scrollbar-color:#000_#000] scrollbar-thumb-rounded-[32px] hover:[scrollbar-color:#292929_#000]">
+            <div className="xl:h-[62%] h-[60%] 2xl:h-[67%] text-white text-xl lg:text-2xl flex p-2 flex-col items-start overflow-y-scroll overflow-x-hidden [scrollbar-width:thin] [scrollbar-color:#000_#000] scrollbar-thumb-rounded-[32px] hover:[scrollbar-color:#292929_#000]">
                 {sessions.map((session) => (
                     <HistorySession
                         onClick={() => {
