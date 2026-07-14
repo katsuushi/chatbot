@@ -94,6 +94,7 @@ dependencies = [
     { name = "fastapi-users", extra = ["sqlalchemy"] },
     { name = "google-genai" },
     { name = "python-dotenv" },
+    { name = "resend" },
     { name = "sqlalchemy" },
     { name = "uvicorn" },
 ]
@@ -105,6 +106,7 @@ requires-dist = [
     { name = "fastapi-users", extras = ["sqlalchemy"], specifier = ">=15.0.5" },
     { name = "google-genai", specifier = ">=1.75.0" },
     { name = "python-dotenv", specifier = ">=1.2.2" },
+    { name = "resend", specifier = ">=2.33.0" },
     { name = "sqlalchemy", specifier = ">=2.0.49" },
     { name = "uvicorn", specifier = ">=0.46.0" },
 ]
@@ -668,6 +670,19 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/5f/a4/98b9c7c6428a668bf7e42ebb7c79d576a1c3c1e3ae2d47e674b468388871/requests-2.33.1.tar.gz", hash = "sha256:18817f8c57c6263968bc123d237e3b8b08ac046f5456bd1e307ee8f4250d3517", size = 134120, upload-time = "2026-03-30T16:09:15.531Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/d7/8e/7540e8a2036f79a125c1d2ebadf69ed7901608859186c856fa0388ef4197/requests-2.33.1-py3-none-any.whl", hash = "sha256:4e6d1ef462f3626a1f0a0a9c42dd93c63bad33f9f1c1937509b8c5c8718ab56a", size = 64947, upload-time = "2026-03-30T16:09:13.83Z" },
+]
+
+[[package]]
+name = "resend"
+version = "2.33.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "requests" },
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/1d/fd/6833d1146ed294e838fffcc1478f624ccee8ed90bd33ae20dcdaeb8c46b4/resend-2.33.0.tar.gz", hash = "sha256:860619a366a51e556b99c80a4f5d909c798d84968cb895fb569e89b70ebe5a86", size = 49442, upload-time = "2026-07-13T18:44:44.226Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/cb/65/7bc28462421359f88d3d58dbdddc70034a6952a9dd0905de906296207b00/resend-2.33.0-py2.py3-none-any.whl", hash = "sha256:c63088e6bfd4a869bff418164dbb73e9fef0d00297db52f9b4a7142173057cc8", size = 79152, upload-time = "2026-07-13T18:44:42.912Z" },
 ]
 
 [[package]]

@@ -8,6 +8,12 @@ import uuid
 from fastapi_users import FastAPIUsers, BaseUserManager, UUIDIDMixin
 from fastapi import Depends, Request
 from db import User, get_user_db
+import os, resend
+from dotenv import load_dotenv
+
+load_dotenv()
+
+resend.api_key = "re_bWyJSWbm_EYoWNQzsfKzr4rhhZdm9c5EG"
 
 SECRET = "SECRETASFUCK"
 bearer_transport = BearerTransport(tokenUrl="/auth/jwt/login")
@@ -29,7 +35,16 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
     async def on_after_forgot_password(
         self, user: User, token: str, request: Request | None = None
     ):
-        print(f"User: {user.id} has forgot their password. Reset Token: {token}")
+        print("Detected user resetting password, attempting to send a email.")
+        print(f"User email: {user.email}")
+        email = resend.Emails.send(
+            {
+                "from": "onboarding@resend.dev",
+                "to": user.email,
+                "subject": "Password recovery",
+                "html": f"http://localhost:5173/resetpassword?token={token}",
+            }
+        )
 
     async def on_after_request_verify(
         self, user: User, token: str, request: Request | None = None

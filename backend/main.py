@@ -10,7 +10,15 @@ from google import genai
 from sqlalchemy import select
 
 from db import AsyncSession, Session, User, create_db_and_tables, get_asyncsession
-from schemas import UserCreate, UserRead, UserUpdate, Prompt, TemporaryPrompt, Reprompt, RepromptTemporary
+from schemas import (
+    UserCreate,
+    UserRead,
+    UserUpdate,
+    Prompt,
+    TemporaryPrompt,
+    Reprompt,
+    RepromptTemporary,
+)
 from users import cookie_backend, bearer_backend, current_active_user, fastapi_users
 import uuid
 
@@ -20,6 +28,7 @@ gemini_key = os.getenv("GEMINI_API_KEY")
 sysinstruct = (
     "You are a helpful assistant, that's designed to assist the user in its problems."
 )
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -55,6 +64,12 @@ app.include_router(
     fastapi_users.get_users_router(UserRead, UserUpdate),
     prefix="/users",
     tags=["users"],
+)
+
+app.include_router(
+    fastapi_users.get_reset_password_router(),
+    prefix="/auth",
+    tags=["auth"],
 )
 
 
@@ -128,8 +143,6 @@ async def promptTemporary(
         history.append({"role": "user", "text": i["prompt"]})
         history.append({"role": "model", "text": i["response"]})
 
-
-
     chat = gemini_client.aio.chats.create(
         model="gemini-3.1-flash-lite",
         config={"system_instruction": sysinstruct},
@@ -142,34 +155,38 @@ async def promptTemporary(
 
     # convert the history into a frontend friendly format so we don't write more code in the frontend
     formatted = []
-    for i in range(0,len(history),2):
-        formatted.append({
-                "prompt": history[i]["text"],
-                "response": history[i+1]["text"]
-            })
+    for i in range(0, len(history), 2):
+        formatted.append(
+            {"prompt": history[i]["text"], "response": history[i + 1]["text"]}
+        )
 
     formatted.append({"prompt": schema.prompt, "response": response.text})
 
-
-
     return response.text
+
 
 @app.post("/api/reprompt")
 async def reprompt(
     schema: Reprompt,
     user: User = Depends(current_active_user),
-    db: AsyncSession = Depends(get_asyncsession)
+    db: AsyncSession = Depends(get_asyncsession),
 ):
     # Get the session
-    result = await db.execute(select(Session).where(Session.sessionKey == schema.sessionKey))
+    result = await db.execute(
+        select(Session).where(Session.sessionKey == schema.sessionKey)
+    )
     session = result.scalar_one_or_none()
     if session is None:
-        raise HTTPException(status_code=404, detail="Couldn't find the requested session")
+        raise HTTPException(
+            status_code=404, detail="Couldn't find the requested session"
+        )
     else:
         # Get the history via from session.data
         history = json.loads(session.data["history"])
         iteration = schema.iteration * 2
-        newBranch = history[:iteration] # newBranch is history till the requested message (it * 2 because history alternates {user}, {model})
+        newBranch = history[
+            :iteration
+        ]  # newBranch is history till the requested message (it * 2 because history alternates {user}, {model})
 
         # Send the request with the history being newBranch
         chat = gemini_client.aio.chats.create(
@@ -183,7 +200,7 @@ async def reprompt(
 
         response = await chat.send_message(schema.newPrompt)
 
-        # Because chat.get_history() already returns the new branch we don't have to change anything 
+        # Because chat.get_history() already returns the new branch we don't have to change anything
         session.data = {
             **session.data,
             "history": json.dumps(
@@ -197,18 +214,19 @@ async def reprompt(
         newBranchData = json.loads(session.data["history"])
         newBranch = []
         for i in range(0, len(newBranchData), 2):
-            newBranch.append({
-                "prompt": newBranchData[i]["text"],
-                "response": newBranchData[i+1]["text"]
-            })
+            newBranch.append(
+                {
+                    "prompt": newBranchData[i]["text"],
+                    "response": newBranchData[i + 1]["text"],
+                }
+            )
 
         await db.commit()
 
-
-
-        return newBranch 
+        return newBranch
 
         # This WILL need some readjustments when we are going to implement multiple conversation branch support
+
 
 @app.post("/api/repromptTemporary")
 async def repromptTemporary(
@@ -216,11 +234,12 @@ async def repromptTemporary(
     user: User = Depends(current_active_user),
 ):
     history = schema.history
-    iteration = schema.iteration # Due to how frontend handles the sessions' conversation array we don't need to multiply by 2
-    newBranch = history[:iteration] 
-   
-    print(history)
+    iteration = (
+        schema.iteration
+    )  # Due to how frontend handles the sessions' conversation array we don't need to multiply by 2
+    newBranch = history[:iteration]
 
+    print(history)
 
     # Because LLm handles the history dict a bit different than our frontend we convert it
     history = []
@@ -228,13 +247,11 @@ async def repromptTemporary(
         history.append({"role": "user", "text": i["prompt"]})
         history.append({"role": "model", "text": i["response"]})
 
-
     chat = gemini_client.aio.chats.create(
         model="gemini-3.1-flash-lite",
         config={"system_instruction": sysinstruct},
         history=[
-            {"role": msg["role"], "parts": [{"text": msg["text"]}]}
-            for msg in history
+            {"role": msg["role"], "parts": [{"text": msg["text"]}]} for msg in history
         ],
     )
 
@@ -242,17 +259,15 @@ async def repromptTemporary(
 
     # we can now convert it into a frontend friendly format so we don't write more code in the frontend
     newBranch = []
-    for i in range(0,len(history),2):
-        newBranch.append({
-                "prompt": history[i]["text"],
-                "response": history[i+1]["text"]
-            })
+    for i in range(0, len(history), 2):
+        newBranch.append(
+            {"prompt": history[i]["text"], "response": history[i + 1]["text"]}
+        )
 
     newBranch.append({"prompt": schema.newPrompt, "response": response.text})
 
-    return newBranch 
+    return newBranch
 
-    
 
 @app.get("/api/loadSession")
 async def loadSession(
