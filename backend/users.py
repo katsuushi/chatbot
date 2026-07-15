@@ -13,9 +13,9 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-resend.api_key = "re_bWyJSWbm_EYoWNQzsfKzr4rhhZdm9c5EG"
+resend.api_key = os.getenv("RESEND_API_KEY")
+SECRET = os.getenv("SECRET")
 
-SECRET = "SECRETASFUCK"
 bearer_transport = BearerTransport(tokenUrl="/auth/jwt/login")
 cookie_transport = CookieTransport(
     cookie_name="cookieauth",
@@ -50,6 +50,15 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
         self, user: User, token: str, request: Request | None = None
     ):
         print(f"User: {user.id} requests verification. Verification Token: {token}")
+        print(f"User email: {user.email}")
+        email = resend.Emails.send(
+            {
+                "from": "onboarding@resend.dev",
+                "to": user.email,
+                "subject": "Account verification",
+                "html": f"http://localhost:5173/login?token={token}",
+            }
+        )
 
 
 async def get_user_manager(user_db=Depends(get_user_db)):
@@ -72,3 +81,4 @@ fastapi_users = FastAPIUsers[User, uuid.UUID](
 )
 
 current_active_user = fastapi_users.current_user(active=True)
+current_active_verified_user = fastapi_users.current_user(verified=True, active=True)

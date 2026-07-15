@@ -19,7 +19,7 @@ class Base(DeclarativeBase):
 
 class User(SQLAlchemyBaseUserTableUUID, Base):
     __tablename__ = "user"
-    username = Column(String(32), unique=True, index=True)
+    username = Column(String(32), unique=False, index=True)
     sessions = relationship("Session", back_populates="owner")
 
 

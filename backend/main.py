@@ -19,7 +19,13 @@ from schemas import (
     Reprompt,
     RepromptTemporary,
 )
-from users import cookie_backend, bearer_backend, current_active_user, fastapi_users
+from users import (
+    cookie_backend,
+    bearer_backend,
+    current_active_verified_user,
+    fastapi_users,
+    current_active_verified_user,
+)
 import uuid
 
 load_dotenv()
@@ -72,6 +78,12 @@ app.include_router(
     tags=["auth"],
 )
 
+app.include_router(
+    fastapi_users.get_verify_router(UserRead),
+    prefix="/auth",
+    tags=["auth"],
+)
+
 
 @app.get("/api/ping")
 def pong():
@@ -83,7 +95,7 @@ async def promptFlashLite(
     prompt: Prompt,
     session: uuid.UUID,
     db: AsyncSession = Depends(get_asyncsession),
-    user: User = Depends(current_active_user),
+    user: User = Depends(current_active_verified_user),
 ):
     print(session)
     res = await db.execute(select(Session).where(Session.sessionKey == session))
@@ -135,7 +147,7 @@ async def promptFlashLite(
 async def promptTemporary(
     schema: TemporaryPrompt,
     db: AsyncSession = Depends(get_asyncsession),
-    user: User = Depends(current_active_user),
+    user: User = Depends(current_active_verified_user),
 ):
     # Because LLm handles the history dict a bit different than our frontend we convert it
     history = []
@@ -168,7 +180,7 @@ async def promptTemporary(
 @app.post("/api/reprompt")
 async def reprompt(
     schema: Reprompt,
-    user: User = Depends(current_active_user),
+    user: User = Depends(current_active_verified_user),
     db: AsyncSession = Depends(get_asyncsession),
 ):
     # Get the session
@@ -231,7 +243,7 @@ async def reprompt(
 @app.post("/api/repromptTemporary")
 async def repromptTemporary(
     schema: RepromptTemporary,
-    user: User = Depends(current_active_user),
+    user: User = Depends(current_active_verified_user),
 ):
     history = schema.history
     iteration = (
@@ -273,7 +285,7 @@ async def repromptTemporary(
 async def loadSession(
     session: uuid.UUID,
     db: AsyncSession = Depends(get_asyncsession),
-    user: User = Depends(current_active_user),
+    user: User = Depends(current_active_verified_user),
 ):
 
     result = await db.execute(select(Session).where(Session.sessionKey == session))
@@ -294,7 +306,7 @@ async def loadSession(
 async def deleteSession(
     session: str = "default",
     db: AsyncSession = Depends(get_asyncsession),
-    user: User = Depends(current_active_user),
+    user: User = Depends(current_active_verified_user),
 ):
     result = await db.execute(
         select(Session).where(Session.sessionKey == uuid.UUID(session))
@@ -318,7 +330,7 @@ async def deleteSession(
 @app.delete("/api/deleteAllUserSessions")
 async def deleteAllUserSessions(
     db: AsyncSession = Depends(get_asyncsession),
-    user: User = Depends(current_active_user),
+    user: User = Depends(current_active_verified_user),
 ):
     call = await db.execute(select(Session).where(Session.owner_id == user.id))
     rows = call.scalars().all()
@@ -331,7 +343,7 @@ async def deleteAllUserSessions(
 @app.get("/api/getUserSessions")
 async def getUserSessions(
     db: AsyncSession = Depends(get_asyncsession),
-    user: User = Depends(current_active_user),
+    user: User = Depends(current_active_verified_user),
 ):
     call = await db.execute(select(Session).where(Session.owner_id == user.id))
     rows = call.scalars().all()
@@ -347,7 +359,7 @@ async def getUserSessions(
 async def searchSessions(
     query: str,
     db: AsyncSession = Depends(get_asyncsession),
-    user: User = Depends(current_active_user),
+    user: User = Depends(current_active_verified_user),
 ):
     call = await db.execute(
         select(Session).where(
@@ -362,5 +374,5 @@ async def searchSessions(
 
 
 @app.get("/api/testUser")
-async def testUser(user: User = Depends(current_active_user)):
+async def testUser(user: User = Depends(current_active_verified_user)):
     return {"message": "Data", "username": user.email, "id": user.id}

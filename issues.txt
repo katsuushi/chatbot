@@ -3,3 +3,5 @@ Some stuff here that I should consider revisiting:
 - When typing while the llm is generating text you can't send a message when it's done cause its considered empty
 - Streaming would be nice
 - General cooldown between switching from temp -> standard etc to avoid small flashes of previous temp conversation
+- Auth pages aren't mobile responsive
+- Auth is extremely vulnerable (frontend, need to rely on backend much more)

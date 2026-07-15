@@ -45,10 +45,23 @@ function Register() {
                 is_superuser: false,
                 is_verified: false,
                 username: username,
+                // EXTREMELY UNSECURE
             }),
         });
         if (call.ok) {
-            setRegistered(true);
+            const call2 = await fetch("http://localhost:8000/auth/request-verify-token", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    "email": data.em
+                })
+            })
+            if (call2.ok) {
+                setRegistered(true);
+
+            }
         }
     }
 
@@ -87,7 +100,7 @@ function Register() {
                 )}
                 {registered ? (
                     <p className="text-xl! text-[#00ff00]! mb-0! mr-auto">
-                        User successfully registered.
+                        Check your inbox to verify your account.
                     </p>
                 ) : (
                     <></>

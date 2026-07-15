@@ -1,13 +1,42 @@
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 function Login() {
     const [data, setData] = useState({ em: "", ps: "" });
     const [failed, setFailed] = useState(false);
     const [fieldEmpty, setFieldEmpty] = useState(false);
+    const [verifyFailed, setVerifyFailed] = useState(false)
+    const [verifyMessage, setVerifyMessage] = useState(false)
+    const [searchParams] = useSearchParams()
     const navigate = useNavigate();
 
+    const token = searchParams.get("token")
+
+    useEffect(() => {
+        async function verifyAccount() {
+            const call = await fetch("http://localhost:8000/auth/verify", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    "token": token
+                })
+            })
+            if (call.status !== 200) {
+                setVerifyFailed(true)
+            } else {
+                setVerifyMessage(true)
+            }
+        }
+        if (token) {
+            verifyAccount()
+        }
+    }, [])
+
     async function handleLogin() {
+        setVerifyFailed(false)
+        setVerifyMessage(false)
         setFailed(false);
         setFieldEmpty(false)
         if (data.em === "" || data.ps === "" || data.cfps === "") {
@@ -52,6 +81,20 @@ function Login() {
                 {failed ? (
                     <p className="text-xl! text-[#FF0000]! mb-0! mr-auto">
                         Email address or password is incorrect.{" "}
+                    </p>
+                ) : (
+                    <></>
+                )}
+                {verifyFailed ? (
+                    <p className="text-xl! text-[#FF0000]! mb-0! mr-auto">
+                        Couldn't verify your account. Please try again.{" "}
+                    </p>
+                ) : (
+                    <></>
+                )}
+                {verifyMessage ? (
+                    <p className="text-xl! text-[#00FF00]! mb-0! mr-auto">
+                        User successfully verified. Please log in.
                     </p>
                 ) : (
                     <></>

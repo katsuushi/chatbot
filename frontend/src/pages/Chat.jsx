@@ -79,6 +79,13 @@ function Chat() {
                 credentials: "include",
             });
             console.log(call.status);
+            if (call.ok) {
+                const res = await call.json()
+                //if (res.is_verified == false) {
+                 //   return navigate("/login", { replace: true });
+                //}
+                // THIS IS INCREDIBLY UNSECURE 
+            }
             if (call.status === 401) {
                 return navigate("/login", { replace: true });
             }
