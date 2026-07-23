@@ -107,8 +107,9 @@ async def promptFlashLite(
             config={"system_instruction": sysinstruct},
         )
 
+        # Creating the session to the db
         chatsession = Session(
-            data={"history": []},
+            data={"current_leaf": "m-1", "nodes": {}},
             sessionKey=session,
             owner_id=user.id,
             sessionName=prompt.prompt,
@@ -117,26 +118,63 @@ async def promptFlashLite(
         db.add(chatsession)
         rows = chatsession
     else:
-        history = json.loads(rows.data["history"])
+        history = rows.data
+        nodes = history["nodes"]
+        reversednodes = dict(reversed(list(nodes.items())))
+        llmhistoryparsed = []
+        current_node = int(history["current_leaf"][1:])
+
+        for node in reversednodes:
+            parent = None
+            if (
+                nodes[node]["parent_id"] == parent
+                and nodes[node] == current_node
+                or nodes[node]["parent_id"] == None
+                and nodes[node] == current_node
+            ):
+                role = nodes[node]["role"]
+                text = nodes[node]["text"]
+                current_node = nodes[node]["parent_id"]
+                llmhistoryparsed.append({"role": role, "parts": [{"text": text}]})
+            else:
+                continue
+
         chat = gemini_client.aio.chats.create(
             model="gemini-3.1-flash-lite",
             config={"system_instruction": sysinstruct},
-            history=[
-                {"role": msg["role"], "parts": [{"text": msg["text"]}]}
-                for msg in history
-            ],
+            history=llmhistoryparsed.reverse(),
         )
+    history = rows.data
+    current_leaf = int(history["current_leaf"][1:])
+    print(current_leaf)
+    previous_nodes = history["nodes"]
 
     response = await chat.send_message(prompt.prompt)
 
     rows.data = {
-        **rows.data,
-        "history": json.dumps(
-            [
-                {"role": msg.role, "text": msg.parts[0].text}
-                for msg in chat.get_history()
-            ]
-        ),
+        "current_leaf": f"m{str(current_leaf + 2)}",
+        "nodes": {
+            node: {
+                "parent_id": previous_nodes[node]["parent_id"],
+                "role": previous_nodes[node]["role"],
+                "text": previous_nodes[node]["text"],
+            }
+            for node in previous_nodes
+        }
+        | {
+            f"m{str(len(previous_nodes))}": {
+                "parent_id": (
+                    f"m{str(len(previous_nodes))}" if len(previous_nodes) != 0 else None
+                ),
+                "role": "user",
+                "text": prompt.prompt,
+            },
+            f"m{str(len(previous_nodes)+1)}": {
+                "parent_id": f"m{str(len(previous_nodes)+1)}",
+                "role": "model",
+                "text": response.text,
+            },
+        },
     }
 
     await db.commit()
@@ -146,7 +184,6 @@ async def promptFlashLite(
 @app.post("/api/promptTemporary")
 async def promptTemporary(
     schema: TemporaryPrompt,
-    db: AsyncSession = Depends(get_asyncsession),
     user: User = Depends(current_active_verified_user),
 ):
     # Because LLm handles the history dict a bit different than our frontend we convert it
@@ -298,7 +335,7 @@ async def loadSession(
             status_code=403, detail="You are not the owner of the session."
         )
     else:
-        history = json.loads(row.data["history"])
+        history = row.data
         return history
 
 
