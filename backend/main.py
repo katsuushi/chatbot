@@ -18,6 +18,7 @@ from schemas import (
     TemporaryPrompt,
     Reprompt,
     RepromptTemporary,
+    InsertData
 )
 from users import (
     cookie_backend,
@@ -124,6 +125,7 @@ async def promptFlashLite(
         llmhistoryparsed = []
         current_node = int(history["current_leaf"][1:])
 
+        # We loop through the reversed loop to create proper context from a branch for the llm
         for node in reversednodes:
             parent = None
             if (
@@ -137,6 +139,7 @@ async def promptFlashLite(
                 current_node = nodes[node]["parent_id"]
                 llmhistoryparsed.append({"role": role, "parts": [{"text": text}]})
             else:
+                # Skipping if we get to a non-relevant node
                 continue
 
         chat = gemini_client.aio.chats.create(
@@ -152,6 +155,7 @@ async def promptFlashLite(
     response = await chat.send_message(prompt.prompt)
 
     rows.data = {
+        # We add all previous nodes
         "current_leaf": f"m{str(current_leaf + 2)}",
         "nodes": {
             node: {
@@ -162,15 +166,18 @@ async def promptFlashLite(
             for node in previous_nodes
         }
         | {
+            # Then we add the user and model node from this prompt
             f"m{str(len(previous_nodes))}": {
                 "parent_id": (
-                    f"m{str(len(previous_nodes))}" if len(previous_nodes) != 0 else None
+                    f"m{str(len(previous_nodes)-1)}"
+                    if len(previous_nodes) != 0
+                    else None
                 ),
                 "role": "user",
                 "text": prompt.prompt,
             },
             f"m{str(len(previous_nodes)+1)}": {
-                "parent_id": f"m{str(len(previous_nodes)+1)}",
+                "parent_id": f"m{str(len(previous_nodes))}",
                 "role": "model",
                 "text": response.text,
             },
@@ -410,6 +417,18 @@ async def searchSessions(
     return data
 
 
-@app.get("/api/testUser")
+@app.put("/debug/insertDataToASession")
+async def insertDataToASession(
+    schema: InsertData, session: uuid.UUID, db: AsyncSession = Depends(get_asyncsession)
+):
+    res = await db.execute(select(Session).where(Session.session_key == session))
+    row = res.scalar_one_or_none()
+    row.data = schema.data
+
+    db.commit()
+    return row.data
+
+
+@app.get("/debug/testUser")
 async def testUser(user: User = Depends(current_active_verified_user)):
     return {"message": "Data", "username": user.email, "id": user.id}

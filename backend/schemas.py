@@ -33,3 +33,6 @@ class RepromptTemporary(BaseModel):
     iteration: int
     newPrompt: str
     history: list
+
+class InsertData(BaseModel):
+    data: dict

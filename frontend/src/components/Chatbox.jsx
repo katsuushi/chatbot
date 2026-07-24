@@ -11,6 +11,7 @@ function Chatbox({
     initChatKey,
     triggerTemp,
 }) {
+    const [sessionHistory, setSessionHistory] = useState({current_leaf: 0})
     const [responses, setResponses] = useState([]);
     const [leftbar, setLeftbar] = useState(false);
     const [prevResponses, setPrevResponses] = useState([]);
@@ -27,11 +28,17 @@ function Chatbox({
     function handleResponse(data) {
         console.log(data);
         if (sessionKey != "temp") {
-            setResponses([...responses, data]);
-
+            const length = Object.keys(sessionHistory).length
+            setSessionHistory({...sessionHistory, [`m${length}`]: {parent_id: `m${length-1}`, role: "user", text: data.prompt}, [`m${length+1}`]: {parent_id: `m${length}`, role: "model", text: data.response}})
         } else {
             setTempHistory([...tempHistory, data])
         }
+    }
+
+    function leafIncremention(key){
+        sessionKey == key
+        const value = Number(sessionHistory.current_leaf.slice(1) + 1)
+        setCurrentSession({...sessionHistory, current_leaf: value})
     }
 
     function handleTemporary() {
@@ -121,7 +128,11 @@ function Chatbox({
     }
 
     function debug1() {
-        console.log(temporary);
+        console.log(responses);
+    }
+
+    function debug2(){
+        console.log(sessionHistory)
     }
 
     function timerReset(timer) {
@@ -157,22 +168,48 @@ function Chatbox({
             const result = await res.json();
             console.log("LoadSession response:");
             console.log(result);
-            console.log(result.length);
-            for (let i = 0; i < result.length; i = i + 2) {
-                const set = {
-                    prompt: result[i].text,
-                    response: result[i + 1].text,
-                };
-
-                setResponses((pr) => [...pr, set]);
-                const timer = setTimeout(() => {
-                    timerReset(timer);
-                }, 10);
-            }
-            console.log(responses)
+            setSessionHistory(result)
+            setTimeout(() => {
+                setLoading(false)
+            }, 10)
         }
         loadSession();
     }, [sessionKey, trigger]);
+
+    useEffect(() => {
+        function generateBranch() {
+            // checking if sessionKey is a uuid
+            if (/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(sessionKey) == true) {
+                let current_leaf = sessionHistory.current_leaf
+                let branch = []
+                let sets = []
+                // Going backwards to navigate through the active branch - once we have it we reverse it
+                for (let i = Object.keys(sessionHistory.nodes).length - 1; i > -1; i--) {
+                    if (current_leaf == `m${i}` || sessionHistory.nodes[`m${i}`].parent_id == null) {
+                        // current node
+                        const c_node = sessionHistory.nodes[`m${i}`]
+                        current_leaf = c_node.parent_id
+                        const node = { parent_id: c_node.parent_id, role: c_node.role, text: c_node.text }
+                        // honestly i got lost and dont know what this is for yet
+                        branch.push(node)
+                    } else {
+                        continue
+
+                    }
+                }
+                for (let i = branch.length - 1; i > -1; i=i-2) {
+                    // sets to render on frontend
+                    const set = {
+                        prompt: branch[i].text,
+                        response: branch[i-1].text 
+                    }
+                    sets.push(set)
+                }
+                setResponses(sets)
+            }
+        }
+        generateBranch()
+    }, [sessionHistory])
 
     function handleLeftbar() {
         leftbarstate(!leftbar);
@@ -191,12 +228,12 @@ function Chatbox({
                             />
                         </button>
 
-                        <h1 className="xl:text-3xl lg:text-2xl text-xl text-white">
+                        <h1 onClick={debug1} className="xl:text-3xl lg:text-2xl text-xl text-white">
                             ChatBot
                         </h1>
 
                     </div>
-                    <h1 className="xl:text-2xl lg:text-xl text-lg hidden sm:block text-gray-400!">
+                    <h1 onClick={debug2} className="xl:text-2xl lg:text-xl text-lg hidden sm:block text-gray-400!">
                         {sessionName}
                     </h1>
                 </div>
@@ -245,6 +282,7 @@ function Chatbox({
                     responses.map(
                         (res, i) => (
                             <div key={i}>
+
                                 <UserResponseBox responseid={i} text={res.prompt} repromptCall={handleReprompt} />
                                 <LLmResponseBox text={res.response} />
                             </div>
@@ -258,7 +296,7 @@ function Chatbox({
                 session={sessionKey}
                 initKey={initKey}
                 temporaryHistory={tempHistory}
-
+                leafIncremention={leafIncremention}
             />
             <div className="w-[100%] h-[15vh]"></div>
         </div>

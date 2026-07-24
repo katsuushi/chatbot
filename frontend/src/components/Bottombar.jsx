@@ -1,6 +1,6 @@
 import { useState, useContext } from "react";
 import { SessionContext } from "../contexts/sessionContext";
-function Bottombar({ response, session, temporaryHistory, initKey }) {
+function Bottombar({ response, session, temporaryHistory, initKey, leafIncremention }) {
     const [prompt, setPrompt] = useState("");
     let reloadSessions = false;
     const { loadFn } = useContext(SessionContext);
@@ -22,6 +22,7 @@ function Bottombar({ response, session, temporaryHistory, initKey }) {
             prompt: prompt,
             response: "01000011",
         });
+        leafIncremention()
         const promptarea = document.getElementById("textpromptarea");
         promptarea.value = "";
         console.log("fetching with this session: " + session);
@@ -53,6 +54,8 @@ function Bottombar({ response, session, temporaryHistory, initKey }) {
                         prompt: prompt,
                         response: data,
                     });
+                    leafIncremention(session)
+
                 }
             } else {
                 console.log("temporary detected");
