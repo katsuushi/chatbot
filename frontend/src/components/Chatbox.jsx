@@ -11,11 +11,13 @@ function Chatbox({
     initChatKey,
     triggerTemp,
 }) {
-    const [sessionHistory, setSessionHistory] = useState({current_leaf: 0})
-    const [responses, setResponses] = useState([]);
+    const [sessionHistory, setSessionHistory] = useState({ current_leaf: "m0", nodes: {} }) // session data  
+    const [responses, setResponses] = useState([]); // branch
+    const [nodeCount, setNodeCount] = useState(0) // amount of nodes in sessionhistory
+
     const [leftbar, setLeftbar] = useState(false);
     const [prevResponses, setPrevResponses] = useState([]);
-    const [currentSession, setCurrentSession] = useState(sessionKey);
+    const [currentSession, setCurrentSession] = useState(sessionKey); // session key
     const [temporary, setTemporary] = useState(false);
     const [loading, setLoading] = useState(true);
     const [tempHistory, setTempHistory] = useState([]);
@@ -26,19 +28,28 @@ function Chatbox({
 
     // Handles submiting a prompt
     function handleResponse(data) {
-        console.log(data);
+        console.log(data)
         if (sessionKey != "temp") {
-            const length = Object.keys(sessionHistory).length
-            setSessionHistory({...sessionHistory, [`m${length}`]: {parent_id: `m${length-1}`, role: "user", text: data.prompt}, [`m${length+1}`]: {parent_id: `m${length}`, role: "model", text: data.response}})
+            const postLength = Object.keys(sessionHistory.nodes).length
+            console.log(postLength + " here postLength")
+            const newSessionData = { current_leaf: `m${Number(sessionHistory.current_leaf.slice(1)) + 2}`, nodes: { ...sessionHistory.nodes, [`m${postLength}`]: { parent_id: `m${postLength - 1}`, role: "user", text: data.prompt }, [`m${postLength + 1}`]: { parent_id: `m${postLength}`, role: "model", text: data.response } } }
+            const value = Number(sessionHistory.current_leaf.slice(1)) + 2
+            setSessionHistory({ ...sessionHistory, current_leaf: `m${value}` })
+            console.log(newSessionData)
+            setSessionHistory(newSessionData)
+            setNodeCount(nodeCount + 2) 
         } else {
             setTempHistory([...tempHistory, data])
         }
     }
 
-    function leafIncremention(key){
-        sessionKey == key
-        const value = Number(sessionHistory.current_leaf.slice(1) + 1)
-        setCurrentSession({...sessionHistory, current_leaf: value})
+    function handleTempMessage(prompt) {
+        setResponses((pr) => [...pr, { prompt: prompt, response: "01000011" }])
+    }
+
+    function leafIncremention(key) {
+        setCurrentSession(key)
+
     }
 
     function handleTemporary() {
@@ -131,7 +142,7 @@ function Chatbox({
         console.log(responses);
     }
 
-    function debug2(){
+    function debug2() {
         console.log(sessionHistory)
     }
 
@@ -168,6 +179,7 @@ function Chatbox({
             const result = await res.json();
             console.log("LoadSession response:");
             console.log(result);
+            setNodeCount(Object.keys(result.nodes).length)
             setSessionHistory(result)
             setTimeout(() => {
                 setLoading(false)
@@ -184,7 +196,7 @@ function Chatbox({
                 let branch = []
                 let sets = []
                 // Going backwards to navigate through the active branch - once we have it we reverse it
-                for (let i = Object.keys(sessionHistory.nodes).length - 1; i > -1; i--) {
+                for (let i = nodeCount - 1; i > -1; i--) {
                     if (current_leaf == `m${i}` || sessionHistory.nodes[`m${i}`].parent_id == null) {
                         // current node
                         const c_node = sessionHistory.nodes[`m${i}`]
@@ -197,11 +209,11 @@ function Chatbox({
 
                     }
                 }
-                for (let i = branch.length - 1; i > -1; i=i-2) {
+                for (let i = branch.length - 1; i > -1; i = i - 2) {
                     // sets to render on frontend
                     const set = {
                         prompt: branch[i].text,
-                        response: branch[i-1].text 
+                        response: branch[i - 1].text
                     }
                     sets.push(set)
                 }
@@ -209,7 +221,7 @@ function Chatbox({
             }
         }
         generateBranch()
-    }, [sessionHistory])
+    }, [nodeCount, sessionHistory.nodes])
 
     function handleLeftbar() {
         leftbarstate(!leftbar);
@@ -289,6 +301,7 @@ function Chatbox({
                         ),
                     )
                 )}
+
             </div>
 
             <Bottombar
@@ -296,6 +309,7 @@ function Chatbox({
                 session={sessionKey}
                 initKey={initKey}
                 temporaryHistory={tempHistory}
+                tempMessage={handleTempMessage}
                 leafIncremention={leafIncremention}
             />
             <div className="w-[100%] h-[15vh]"></div>

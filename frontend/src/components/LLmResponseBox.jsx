@@ -1,6 +1,4 @@
-import { useState, useEffect } from "react";
-import ReactMarkdown from "react-markdown";
-
+import { useState, useEffect } from "react"; import ReactMarkdown from "react-markdown";
 function LLmResponseBox(text) {
     const [response, setResponse] = useState("");
 

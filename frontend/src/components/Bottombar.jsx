@@ -1,6 +1,6 @@
 import { useState, useContext } from "react";
 import { SessionContext } from "../contexts/sessionContext";
-function Bottombar({ response, session, temporaryHistory, initKey, leafIncremention }) {
+function Bottombar({ response, session, temporaryHistory, initKey, tempMessage, leafIncremention }) {
     const [prompt, setPrompt] = useState("");
     let reloadSessions = false;
     const { loadFn } = useContext(SessionContext);
@@ -18,11 +18,7 @@ function Bottombar({ response, session, temporaryHistory, initKey, leafIncrement
         if (prompt === "") {
             throw new Error
         }
-        response({
-            prompt: prompt,
-            response: "01000011",
-        });
-        leafIncremention()
+        tempMessage(prompt)
         const promptarea = document.getElementById("textpromptarea");
         promptarea.value = "";
         console.log("fetching with this session: " + session);
@@ -87,6 +83,7 @@ function Bottombar({ response, session, temporaryHistory, initKey, leafIncrement
             }
 
         } catch (error) {
+            console.log("what the fuck is the error")
             response({
                 prompt: prompt,
                 response: "A problem occured. Please try again later.",

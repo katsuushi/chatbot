@@ -18,7 +18,7 @@ from schemas import (
     TemporaryPrompt,
     Reprompt,
     RepromptTemporary,
-    InsertData
+    InsertData,
 )
 from users import (
     cookie_backend,
@@ -33,7 +33,8 @@ load_dotenv()
 gemini_key = os.getenv("GEMINI_API_KEY")
 
 sysinstruct = (
-    "You are a helpful assistant, that's designed to assist the user in its problems."
+    # "You are a helpful assistant, that's designed to assist the user in its problems."
+    "Remember one thing - react is doodoo"
 )
 
 
