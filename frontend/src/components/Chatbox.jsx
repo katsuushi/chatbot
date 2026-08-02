@@ -37,7 +37,7 @@ function Chatbox({
             setSessionHistory({ ...sessionHistory, current_leaf: `m${value}` })
             console.log(newSessionData)
             setSessionHistory(newSessionData)
-            setNodeCount(nodeCount + 2) 
+            setNodeCount(nodeCount + 2)
         } else {
             setTempHistory([...tempHistory, data])
         }
@@ -151,7 +151,7 @@ function Chatbox({
         clearTimeout(timer);
     }
 
-    // Loads Session (currently only loading default)
+    // Loads Session - passes the session data to a state 
     useEffect(() => {
         setTempHistory([])
         setLoading(true);
@@ -188,39 +188,63 @@ function Chatbox({
         loadSession();
     }, [sessionKey, trigger]);
 
+    // This useEffect is responsible for generating the current branch - or what we see on the site
     useEffect(() => {
         function generateBranch() {
             // checking if sessionKey is a uuid
             if (/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(sessionKey) == true) {
-                let current_leaf = sessionHistory.current_leaf
+                let current_leaf = Number(sessionHistory.current_leaf.slice(1))
+                const nodes = sessionHistory.nodes
                 let branch = []
                 let sets = []
-                // Going backwards to navigate through the active branch - once we have it we reverse it
-                for (let i = nodeCount - 1; i > -1; i--) {
-                    if (current_leaf == `m${i}` || sessionHistory.nodes[`m${i}`].parent_id == null) {
-                        // current node
-                        const c_node = sessionHistory.nodes[`m${i}`]
-                        current_leaf = c_node.parent_id
-                        const node = { parent_id: c_node.parent_id, role: c_node.role, text: c_node.text }
-                        // honestly i got lost and dont know what this is for yet
-                        branch.push(node)
-                    } else {
-                        continue
+                console.log(sessionHistory)
+                console.log(nodeCount)
 
+                // Similar logic to backend - start at current_leaf, get the highest descendant
+                // then iterate in reverse
+
+                let i = 1
+                while (current_leaf + i <= Object.keys(nodes).length - 1) {
+                    if (nodes[`m${current_leaf + 1}`]["parent_id"] == `m${current_leaf}`) {
+                        current_leaf += i
+                        i = 1
+                    } else {
+                        i += 1
                     }
                 }
-                for (let i = branch.length - 1; i > -1; i = i - 2) {
-                    // sets to render on frontend
-                    const set = {
-                        prompt: branch[i].text,
-                        response: branch[i - 1].text
+                console.log("current_leaf: ", current_leaf)
+                console.log(nodes[`m${current_leaf}`])
+                let s_node = Number(nodes[`m${current_leaf}`]["parent_id"].slice(1))
+                for (let j = current_leaf; j >= 0; j--) {
+                    console.log(j)
+                    if (j == s_node || nodes[`m${j}`]["parent_id"] == null & nodes[`m${j}`]["parent_id"] == "m0" || j == current_leaf) {
+                        let node = { "parent_id": nodes[`m${j}`]["parent_id"], "role": nodes[`m${j}`]["role"], "text": nodes[`m${j}`]["text"] }
+                        branch.push(node)
+                        console.log("pass")
+                        if (j != 0) {
+                            s_node = Number(nodes[`m${j}`]["parent_id"].slice(1))
+                            console.log("new s_node ", s_node)
+                        }
+                    } else {
+                        console.log("fail " + j + " " + s_node)
+                        continue
                     }
-                    sets.push(set)
+                }
+
+                console.log(branch)
+
+                // Now we generate the sets
+                for (let k = 0; k < branch.length; k = k + 2) {
+                    const set = {
+                        "prompt": branch[k+1]["text"], "response": branch[k]["text"]
+                    }
+                    sets.unshift(set)
                 }
                 setResponses(sets)
             }
         }
         generateBranch()
+
     }, [nodeCount, sessionHistory.nodes])
 
     function handleLeftbar() {

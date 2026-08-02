@@ -124,30 +124,45 @@ async def promptFlashLite(
         nodes = history["nodes"]
         reversednodes = dict(reversed(list(nodes.items())))
         llmhistoryparsed = []
-        current_node = int(history["current_leaf"][1:])
+        current_leaf = int(history["current_leaf"][1:])
 
-        # We loop through the reversed loop to create proper context from a branch for the llm
-        for node in reversednodes:
-            parent = None
-            if (
-                nodes[node]["parent_id"] == parent
-                and nodes[node] == current_node
-                or nodes[node]["parent_id"] == None
-                and nodes[node] == current_node
-            ):
-                role = nodes[node]["role"]
-                text = nodes[node]["text"]
-                current_node = nodes[node]["parent_id"]
-                llmhistoryparsed.append({"role": role, "parts": [{"text": text}]})
+        # We're starting at the current_leaf and go up, checking if there's anything past that leaf
+        # Then we establish the highest descendant and iterate from reverse from that leaf
+        i = 1
+        # Getting the deepest child
+        while current_leaf + i <= len(nodes) - 1:
+            if nodes[f"m{current_leaf+i}"]["parent_id"] == f"m{current_leaf}":
+                current_leaf += i
+                i = 1
             else:
-                # Skipping if we get to a non-relevant node
+                i += 1
+        # Creating the context
+        s_node = int(nodes[f"m{current_leaf}"]["parent_id"][1:])
+        for i in range(current_leaf, -1, -1):
+            if (
+                i == s_node
+                or nodes[f"m{i}"]["parent_id"][1:] == None
+                and nodes[f"m{i}"]["parent_id"] == "m0"
+                or i == current_leaf
+            ):
+                node = {
+                    "role": nodes[f"m{i}"]["role"],
+                    "parts": [{"text": nodes[f"m{i}"]["text"]}],
+                }
+                llmhistoryparsed.append(node)
+                if i != 0:
+                    s_node = int(nodes[f"m{i}"]["parent_id"][1:])
+            else:
                 continue
+
 
         chat = gemini_client.aio.chats.create(
             model="gemini-3.1-flash-lite",
             config={"system_instruction": sysinstruct},
             history=llmhistoryparsed.reverse(),
         )
+        # fix your backend you stupid fuck
+        # i fixed it
     history = rows.data
     current_leaf = int(history["current_leaf"][1:])
     print(current_leaf)
@@ -422,11 +437,11 @@ async def searchSessions(
 async def insertDataToASession(
     schema: InsertData, session: uuid.UUID, db: AsyncSession = Depends(get_asyncsession)
 ):
-    res = await db.execute(select(Session).where(Session.session_key == session))
+    res = await db.execute(select(Session).where(Session.sessionKey == session))
     row = res.scalar_one_or_none()
     row.data = schema.data
 
-    db.commit()
+    await db.commit()
     return row.data
 
 
