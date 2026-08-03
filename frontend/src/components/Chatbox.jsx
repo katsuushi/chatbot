@@ -14,6 +14,7 @@ function Chatbox({
     const [sessionHistory, setSessionHistory] = useState({ current_leaf: "m0", nodes: {} }) // session data  
     const [responses, setResponses] = useState([]); // branch
     const [nodeCount, setNodeCount] = useState(0) // amount of nodes in sessionhistory
+    const [branches, setBranches] = useState({}) // stores the amount of branches a node has
 
     const [leftbar, setLeftbar] = useState(false);
     const [prevResponses, setPrevResponses] = useState([]);
@@ -32,8 +33,8 @@ function Chatbox({
         if (sessionKey != "temp") {
             const postLength = Object.keys(sessionHistory.nodes).length
             console.log(postLength + " here postLength")
-            const newSessionData = { current_leaf: `m${Number(sessionHistory.current_leaf.slice(1)) + 2}`, nodes: { ...sessionHistory.nodes, [`m${postLength}`]: { parent_id: `m${postLength - 1}`, role: "user", text: data.prompt }, [`m${postLength + 1}`]: { parent_id: `m${postLength}`, role: "model", text: data.response } } }
-            const value = Number(sessionHistory.current_leaf.slice(1)) + 2
+            const newSessionData = { current_leaf: `m${Number(nodeCount - 1) + 2}`, nodes: { ...sessionHistory.nodes, [`m${postLength}`]: { parent_id: `m${postLength - 1}`, role: "user", text: data.prompt }, [`m${postLength + 1}`]: { parent_id: `m${postLength}`, role: "model", text: data.response } } }
+            const value = Number(nodeCount - 1) + 2
             setSessionHistory({ ...sessionHistory, current_leaf: `m${value}` })
             console.log(newSessionData)
             setSessionHistory(newSessionData)
@@ -45,6 +46,10 @@ function Chatbox({
 
     function handleTempMessage(prompt) {
         setResponses((pr) => [...pr, { prompt: prompt, response: "01000011" }])
+    }
+
+    function onBranchChange(value) {
+        setSessionHistory({ ...sessionHistory, current_leaf: value })
     }
 
     function leafIncremention(key) {
@@ -139,7 +144,7 @@ function Chatbox({
     }
 
     function debug1() {
-        console.log(responses);
+        console.log(branches);
     }
 
     function debug2() {
@@ -179,7 +184,14 @@ function Chatbox({
             const result = await res.json();
             console.log("LoadSession response:");
             console.log(result);
-            setNodeCount(Object.keys(result.nodes).length)
+            const ref = result.nodes // reference 
+            setNodeCount(Object.keys(ref).length)
+            let branches = {}
+            for (let i = 0; i <= Object.keys(ref).length - 1; i++) {
+                const parent = ref[`m${i}`]["parent_id"]
+                branches[parent] = [...(branches[parent] ?? []), `m${i}`];
+            }
+            setBranches(branches)
             setSessionHistory(result)
             setTimeout(() => {
                 setLoading(false)
@@ -203,30 +215,46 @@ function Chatbox({
                 // Similar logic to backend - start at current_leaf, get the highest descendant
                 // then iterate in reverse
 
+                console.log("begin while loop")
                 let i = 1
+                let temp;
+                let temp2;
                 while (current_leaf + i <= Object.keys(nodes).length - 1) {
-                    if (nodes[`m${current_leaf + 1}`]["parent_id"] == `m${current_leaf}`) {
-                        current_leaf += i
+                    console.log(`${current_leaf}, ${i}, ${Object.keys(nodes).length}`)
+                    console.log(nodes[`m${current_leaf + i}`])
+                    if (nodes[`m${current_leaf + i}`]["parent_id"] == `m${current_leaf}`) {
+                        console.log("pass")
+                        temp = current_leaf + i + 1
+                        temp2 = current_leaf + i
+                        while (temp <= Object.keys(nodes).length - 1) {
+                            if (nodes[`m${temp}`]["parent_id"] == `m${current_leaf}`) {
+                                temp2 = temp
+                            }
+                            temp++
+                        }
+
+                        current_leaf = temp2
                         i = 1
                     } else {
+                        console.log("fail")
                         i += 1
                     }
                 }
                 console.log("current_leaf: ", current_leaf)
-                console.log(nodes[`m${current_leaf}`])
-                let s_node = Number(nodes[`m${current_leaf}`]["parent_id"].slice(1))
+                //console.log(nodes[`m${current_leaf}`])
+                let s_node = current_leaf
                 for (let j = current_leaf; j >= 0; j--) {
-                    console.log(j)
+                    //console.log(j)
                     if (j == s_node || nodes[`m${j}`]["parent_id"] == null & nodes[`m${j}`]["parent_id"] == "m0" || j == current_leaf) {
-                        let node = { "parent_id": nodes[`m${j}`]["parent_id"], "role": nodes[`m${j}`]["role"], "text": nodes[`m${j}`]["text"] }
+                        let node = { "node": `m${j}`, "parent_id": nodes[`m${j}`]["parent_id"], "role": nodes[`m${j}`]["role"], "text": nodes[`m${j}`]["text"] }
                         branch.push(node)
-                        console.log("pass")
+                        //      console.log("pass")
                         if (j != 0) {
                             s_node = Number(nodes[`m${j}`]["parent_id"].slice(1))
-                            console.log("new s_node ", s_node)
+                            //       console.log("new s_node ", s_node)
                         }
                     } else {
-                        console.log("fail " + j + " " + s_node)
+                        //     console.log("fail " + j + " " + s_node)
                         continue
                     }
                 }
@@ -236,7 +264,7 @@ function Chatbox({
                 // Now we generate the sets
                 for (let k = 0; k < branch.length; k = k + 2) {
                     const set = {
-                        "prompt": branch[k+1]["text"], "response": branch[k]["text"]
+                        "prompt": branch[k + 1]["text"], "response": branch[k]["text"], "pnode": branch[k + 1]["node"], "rnode": branch[k]["node"]
                     }
                     sets.unshift(set)
                 }
@@ -245,7 +273,7 @@ function Chatbox({
         }
         generateBranch()
 
-    }, [nodeCount, sessionHistory.nodes])
+    }, [nodeCount, sessionHistory.nodes, sessionHistory.current_leaf])
 
     function handleLeftbar() {
         leftbarstate(!leftbar);
@@ -286,9 +314,8 @@ function Chatbox({
                 {loading ? (
                     prevResponses.map((res, i) => (
                         <div key={i}>
-                            <UserResponseBox responseid={i} text={res.prompt} repromptCall={handleReprompt} />
-                            <LLmResponseBox text={res.response} />
-                        </div>
+                             <UserResponseBox responseid={i} text={res.prompt} branches={branches[res.pnode]} branchChange={onBranchChange} repromptCall={handleReprompt} />
+                                <LLmResponseBox text={res.response} branches={branches[res.rnode]} branchChange={onBranchChange} />                        </div>
                     ))
                 ) : sessionKey === "temp" & (tempHistory.length == 0) ? (
                     <div className="h-[50vh] mt-24 text-center flex flex-col justify-center items-center">
@@ -304,9 +331,8 @@ function Chatbox({
                     tempHistory.map(
                         (res, i) => (
                             <div key={i}>
-                                <UserResponseBox responseid={i} text={res.prompt} repromptCall={handleReprompt} />
-                                <LLmResponseBox text={res.response} />
-                            </div>
+                                <UserResponseBox responseid={i} text={res.prompt} branches={branches[res.pnode]} branchChange={onBranchChange} repromptCall={handleReprompt} />
+                                <LLmResponseBox text={res.response} branches={branches[res.rnode]} branchChange={onBranchChange} />                            </div>
                         )
                     )
                 ) : responses.length == 0 ? (
@@ -315,12 +341,14 @@ function Chatbox({
                         <h1>This is the beginning of your conversation.</h1>
                     </div>
                 ) : (
+
                     responses.map(
                         (res, i) => (
                             <div key={i}>
 
-                                <UserResponseBox responseid={i} text={res.prompt} repromptCall={handleReprompt} />
-                                <LLmResponseBox text={res.response} />
+                                <UserResponseBox responseid={i} text={res.prompt} branches={branches[res.pnode]} branchChange={onBranchChange} repromptCall={handleReprompt} />
+                                <LLmResponseBox text={res.response} branches={branches[res.rnode]} branchChange={onBranchChange} />
+
                             </div>
                         ),
                     )
