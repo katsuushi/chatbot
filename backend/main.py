@@ -34,7 +34,7 @@ gemini_key = os.getenv("GEMINI_API_KEY")
 
 sysinstruct = (
     # "You are a helpful assistant, that's designed to assist the user in its problems."
-    "Remember one thing - react is doodoo"
+    "You are David Goggins. Diss me."
 )
 
 
@@ -129,12 +129,25 @@ async def promptFlashLite(
         # We're starting at the current_leaf and go up, checking if there's anything past that leaf
         # Then we establish the highest descendant and iterate from reverse from that leaf
         i = 1
-        # Getting the deepest child
+        temp = None
+        temp2 = None
+        
+        # havent tested it yet but idc
         while current_leaf + i <= len(nodes) - 1:
-            if nodes[f"m{current_leaf+i}"]["parent_id"] == f"m{current_leaf}":
-                current_leaf += i
+            print(f"{current_leaf}, {i}, {len(nodes)}")
+            print(nodes[f"m{current_leaf + i}"])
+            if nodes[f"m{current_leaf + i}"]["parent_id"] == f"m{current_leaf}":
+                print("pass")
+                temp = current_leaf + i + 1
+                temp2 = current_leaf + i
+                while temp <= len(nodes) - 1:
+                    if nodes[f"m{temp}"]["parent_id"] == f"m{current_leaf}":
+                        temp2 = temp
+                    temp += 1
+                current_leaf = temp2
                 i = 1
             else:
+                print("fail")
                 i += 1
         # Creating the context
         s_node = int(nodes[f"m{current_leaf}"]["parent_id"][1:])
@@ -154,7 +167,6 @@ async def promptFlashLite(
                     s_node = int(nodes[f"m{i}"]["parent_id"][1:])
             else:
                 continue
-
 
         chat = gemini_client.aio.chats.create(
             model="gemini-3.1-flash-lite",
@@ -254,48 +266,100 @@ async def reprompt(
         )
     else:
         # Get the history via from session.data
-        history = json.loads(session.data["history"])
-        iteration = schema.iteration * 2
-        newBranch = history[
-            :iteration
-        ]  # newBranch is history till the requested message (it * 2 because history alternates {user}, {model})
+        history = session.data
+        current_leaf = int(history["current_leaf"][1:])
+        nodes = history["nodes"]
+        branch = []
 
-        # Send the request with the history being newBranch
+        i = 1
+        temp = None
+        temp2 = None
+
+        while current_leaf + i <= len(nodes) - 1:
+            print(f"{current_leaf}, {i}, {len(nodes)}")
+            print(nodes[f"m{current_leaf + i}"])
+            if nodes[f"m{current_leaf + i}"]["parent_id"] == f"m{current_leaf}":
+                print("pass")
+                temp = current_leaf + i + 1
+                temp2 = current_leaf + i
+                while temp <= len(nodes) - 1:
+                    if nodes[f"m{temp}"]["parent_id"] == f"m{current_leaf}":
+                        temp2 = temp
+                    temp += 1
+                current_leaf = temp2
+                i = 1
+            else:
+                print("fail")
+                i += 1
+
+        print("current_leaf: ", current_leaf)
+
+        s_node = current_leaf
+        for j in range(current_leaf, -1, -1):
+            if j == s_node or j == current_leaf:
+                node = {
+                    "node": f"m{j}",
+                    "parent_id": nodes[f"m{j}"]["parent_id"],
+                    "role": nodes[f"m{j}"]["role"],
+                    "text": nodes[f"m{j}"]["text"],
+                }
+                branch.append(node)
+                if j != 0:
+                    s_node = int(nodes[f"m{j}"]["parent_id"][1:])
+            else:
+                continue
+        print("hehe")
+        print(branch)
+
+        cutbranch = branch
+        print(cutbranch)
+        cutbranch.reverse()
+        cutbranch = cutbranch[: schema.iteration]
+        # return gemini_client.models.list()
         chat = gemini_client.aio.chats.create(
-            model="gemini-2.5-flash",
+            model="gemini-3.1-flash-lite",
             config={"system_instruction": sysinstruct},
             history=[
                 {"role": msg["role"], "parts": [{"text": msg["text"]}]}
-                for msg in newBranch
+                for msg in cutbranch
             ],
         )
 
         response = await chat.send_message(schema.newPrompt)
 
-        # Because chat.get_history() already returns the new branch we don't have to change anything
-        session.data = {
-            **session.data,
-            "history": json.dumps(
-                [
-                    {"role": msg.role, "text": msg.parts[0].text}
-                    for msg in chat.get_history()
-                ]
-            ),
+        newNodes = {
+            # Then we add the user and model node from this prompt
+            f"m{str(len(nodes))}": {
+                "parent_id": (
+                    f"m{str(schema.iteration-1)}" if len(cutbranch) != 0 else None
+                ),
+                "role": "user",
+                "text": schema.newPrompt,
+            },
+            f"m{str(len(nodes)+1)}": {
+                "parent_id": f"m{str(len(nodes))}",
+                "role": "model",
+                "text": response.text,
+            },
         }
 
-        newBranchData = json.loads(session.data["history"])
-        newBranch = []
-        for i in range(0, len(newBranchData), 2):
-            newBranch.append(
-                {
-                    "prompt": newBranchData[i]["text"],
-                    "response": newBranchData[i + 1]["text"],
+        session.data = {
+            # We add all previous nodes
+            "current_leaf": f"m{str(len(nodes) + 1)}",
+            "nodes": {
+                node: {
+                    "parent_id": nodes[node]["parent_id"],
+                    "role": nodes[node]["role"],
+                    "text": nodes[node]["text"],
                 }
-            )
+                for node in nodes
+            }
+            | newNodes,
+        }
 
         await db.commit()
 
-        return newBranch
+        return newNodes
 
         # This WILL need some readjustments when we are going to implement multiple conversation branch support
 
