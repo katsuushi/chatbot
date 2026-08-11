@@ -34,7 +34,7 @@ gemini_key = os.getenv("GEMINI_API_KEY")
 
 sysinstruct = (
     # "You are a helpful assistant, that's designed to assist the user in its problems."
-    "You are David Goggins. Diss me."
+    "You are David Goggins. Diss me, but use only 3 Words."
 )
 
 
@@ -131,7 +131,7 @@ async def promptFlashLite(
         i = 1
         temp = None
         temp2 = None
-        
+
         # havent tested it yet but idc
         while current_leaf + i <= len(nodes) - 1:
             print(f"{current_leaf}, {i}, {len(nodes)}")
@@ -267,34 +267,19 @@ async def reprompt(
     else:
         # Get the history via from session.data
         history = session.data
-        current_leaf = int(history["current_leaf"][1:])
         nodes = history["nodes"]
+        current_leaf = int(nodes[f"m{schema.iteration}"]["parent_id"][1:])
         branch = []
+        it = schema.iteration
 
         i = 1
         temp = None
         temp2 = None
 
-        while current_leaf + i <= len(nodes) - 1:
-            print(f"{current_leaf}, {i}, {len(nodes)}")
-            print(nodes[f"m{current_leaf + i}"])
-            if nodes[f"m{current_leaf + i}"]["parent_id"] == f"m{current_leaf}":
-                print("pass")
-                temp = current_leaf + i + 1
-                temp2 = current_leaf + i
-                while temp <= len(nodes) - 1:
-                    if nodes[f"m{temp}"]["parent_id"] == f"m{current_leaf}":
-                        temp2 = temp
-                    temp += 1
-                current_leaf = temp2
-                i = 1
-            else:
-                print("fail")
-                i += 1
-
         print("current_leaf: ", current_leaf)
 
         s_node = current_leaf
+        print(nodes[f"m2"]["parent_id"] == nodes[f"m{it}"]["parent_id"])
         for j in range(current_leaf, -1, -1):
             if j == s_node or j == current_leaf:
                 node = {
@@ -306,15 +291,17 @@ async def reprompt(
                 branch.append(node)
                 if j != 0:
                     s_node = int(nodes[f"m{j}"]["parent_id"][1:])
+
             else:
                 continue
+        print("final it is: " + str(it))
         print("hehe")
-        print(branch)
+        # print(branch)
 
         cutbranch = branch
         print(cutbranch)
         cutbranch.reverse()
-        cutbranch = cutbranch[: schema.iteration]
+        print(cutbranch)
         # return gemini_client.models.list()
         chat = gemini_client.aio.chats.create(
             model="gemini-3.1-flash-lite",
@@ -331,7 +318,9 @@ async def reprompt(
             # Then we add the user and model node from this prompt
             f"m{str(len(nodes))}": {
                 "parent_id": (
-                    f"m{str(schema.iteration-1)}" if len(cutbranch) != 0 else None
+                    f"{str(nodes[f"m{schema.iteration}"]["parent_id"])}"
+                    if schema.iteration != 0
+                    else None
                 ),
                 "role": "user",
                 "text": schema.newPrompt,
