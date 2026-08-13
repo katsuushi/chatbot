@@ -52,9 +52,10 @@ function UserResponseBox({ iteration, responseid, text, repromptCall, branches, 
     useEffect(() => {
         if (!name) {
             console.log("Name isn't initalized")
-        }
+        } else {
         const index = branches.indexOf(name)
         setActiveBranch(index)
+        }
     }, [branches.length])
 
 

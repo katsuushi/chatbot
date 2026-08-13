@@ -144,6 +144,7 @@ function Chatbox({
         }
 
         if (sessionKey != "temp") {
+            // Creating an artificial history to cover up for the api response delay
             const old = sessionHistory.nodes
             const postLength = Object.keys(sessionHistory.nodes).length
             console.log("HEREEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE")
@@ -167,8 +168,9 @@ function Chatbox({
                 const res = await call.json()
                 console.log(res)
                 setSessionHistory({ "current_leaf": `m${nodeCount + 1}`, "nodes": { ...old, ...res } })
+                setNodeCount(nodeCount + 2)
+                organizeBranches()
             }
-            setNodeCount(nodeCount + 2)
         }
 
         else {
