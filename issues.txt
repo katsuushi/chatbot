@@ -5,3 +5,7 @@ Some stuff here that I should consider revisiting:
 - General cooldown between switching from temp -> standard etc to avoid small flashes of previous temp conversation
 - Auth pages aren't mobile responsive
 - Auth is extremely vulnerable (frontend, need to rely on backend much more)
+
+Regarding branching:
+- Don't think changing the frontend leaf affects the context building (the current_leaf stays constant)
+

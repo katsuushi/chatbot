@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 
-function UserResponseBox({ responseid, text, repromptCall, branches, branchChange }) {
+function UserResponseBox({ iteration, responseid, text, repromptCall, branches, branchChange, name }) {
     const [editing, setEditing] = useState(false)
     const [newPrompt, setNewPrompt] = useState("")
 
@@ -15,7 +15,8 @@ function UserResponseBox({ responseid, text, repromptCall, branches, branchChang
 
     function handleReprompt() {
         setEditing(false)
-        repromptCall({ newPrompt: newPrompt, Iteration: responseid })
+        console.log("fuck my life from ", responseid)
+        repromptCall({ newPrompt: newPrompt, nodeNumber: responseid, iteration: iteration })
         setNewPrompt("")
     }
 
@@ -48,7 +49,13 @@ function UserResponseBox({ responseid, text, repromptCall, branches, branchChang
 
 
 
-
+    useEffect(() => {
+        if (!name) {
+            console.log("Name isn't initalized")
+        }
+        const index = branches.indexOf(name)
+        setActiveBranch(index)
+    }, [branches.length])
 
 
     return (
