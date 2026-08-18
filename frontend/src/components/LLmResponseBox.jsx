@@ -36,9 +36,18 @@ function LLmResponseBox({ text, branches, branchChange, retryTrigger, nodeInfo }
         retryTrigger(nodeInfo)
     }
 
+    useEffect(() => {
+        if (!nodeInfo) {
+            console.log("Name (res) isn't initalized")
+        } else {
+        const index = branches.indexOf(nodeInfo)
+        setActiveBranch(index)
+        }
+    }, [branches.length])
+
     return (
         <div className="w-full mt-8">
-            {text === "01000011" ? <></> : <ReactMarkdown>{text}</ReactMarkdown>}
+            {text === "01000011" ? <p>...</p> : <ReactMarkdown>{text}</ReactMarkdown>}
             <div className="flex mr-auto mt-2 max-w-128 justify-start gap-x-2">
                 {ready &&
                     <button onClick={handleRetry} className="rounded-3xl hover:cursor-pointer hover:bg-[#101010] active:bg-[#050505] p-2"><img src="retry.png" className="w-[24px]" /></button>

@@ -19,6 +19,7 @@ from schemas import (
     Reprompt,
     RepromptTemporary,
     InsertData,
+    RegeneratePrompt,
 )
 from users import (
     cookie_backend,
@@ -185,7 +186,7 @@ async def promptFlashLite(
 
     rows.data = {
         # We add all previous nodes
-        "current_leaf": f"m{str(current_leaf + 2)}",
+        "current_leaf": f"m{str(current_leaf + 1)}",
         "nodes": {
             node: {
                 "parent_id": previous_nodes[node]["parent_id"],
@@ -306,7 +307,7 @@ async def reprompt(
                     continue
         print("final it is: " + str(it))
         print("hehe")
-        # print(branch)
+        print(branch)
 
         cutbranch = branch
         print(cutbranch)
@@ -356,7 +357,96 @@ async def reprompt(
 
         return newNodes
 
-        # This WILL need some readjustments when we are going to implement multiple conversation branch support
+
+@app.post("/api/RegeneratePrompt")
+async def RegeneratePrompt(
+    schema: RegeneratePrompt,
+    user: User = Depends(current_active_verified_user),
+    db: AsyncSession = Depends(get_asyncsession),
+):
+    result = await db.execute(
+        select(Session).where(Session.sessionKey == schema.sessionKey)
+    )
+    session = result.scalar_one_or_none()
+    if session is None:
+        raise HTTPException(
+            status_code=404, detail="Couldn't find the requested session."
+        )
+    else:
+        history = session.data
+        nodes = history["nodes"]
+        prompt = nodes[f"m{schema.iteration-1}"]["text"]
+        current_leaf = (
+            int(nodes[f"m{schema.iteration-1}"]["parent_id"][1:])
+            if nodes[f"m{schema.iteration}"]["parent_id"] != None
+            else 0
+        )
+        branch = []
+        it = schema.iteration
+
+        print("current_leaf: ", current_leaf)
+
+        if nodes[f"m{schema.iteration}"]["parent_id"] != None:
+
+            s_node = current_leaf
+
+            for j in range(current_leaf, -1, -1):
+                if j == s_node:
+                    node = {
+                        "node": f"m{j}",
+                        "parent_id": nodes[f"m{j}"]["parent_id"],
+                        "role": nodes[f"m{j}"]["role"],
+                        "text": nodes[f"m{j}"]["text"],
+                    }
+                    branch.append(node)
+                    if nodes[f"m{j}"]["parent_id"] == None:
+                        break
+                    if j != 0:
+                        s_node = int(nodes[f"m{j}"]["parent_id"][1:])
+
+                else:
+                    continue
+
+        cutbranch = branch
+        cutbranch.reverse()
+        chat = gemini_client.aio.chats.create(
+            model="gemini-3.1-flash-lite",
+            config={"system_instruction": sysinstruct},
+            history=[
+                {"role": msg["role"], "parts": [{"text": msg["text"]}]}
+                for msg in cutbranch
+            ],
+        )
+
+        response = await chat.send_message(prompt)
+
+        newNode = {
+            f"m{str(len(nodes))}": {
+                "parent_id": f"{nodes[f"m{schema.iteration}"]["parent_id"]}",
+                "role": "model",
+                "text": response.text,
+            },
+        }
+
+        session.data = {
+            # We add all previous nodes
+            "current_leaf": f"m{str(len(nodes))}",
+            "nodes": {
+                node: {
+                    "parent_id": nodes[node]["parent_id"],
+                    "role": nodes[node]["role"],
+                    "text": nodes[node]["text"],
+                }
+                for node in nodes
+            }
+            | newNode,
+        }
+
+        await db.commit()
+
+        return newNode
+
+        # Due to the similarity of this route and the reprompt I'll probably merge them into one later.
 
 
 @app.post("/api/repromptTemporary")

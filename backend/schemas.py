@@ -29,6 +29,10 @@ class Reprompt(BaseModel):
     iteration: int
     newPrompt: str
 
+class RegeneratePrompt(BaseModel):
+    sessionKey: uuid.UUID
+    iteration: int
+
 class RepromptTemporary(BaseModel):
     iteration: int
     newPrompt: str

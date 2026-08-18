@@ -76,7 +76,7 @@ function Chatbox({
         setResponses((pr) => [...pr, { prompt: prompt, response: "01000011" }])
     }
 
-    
+
 
     // Sidebar functions
     function handleLeftbar() {
@@ -94,6 +94,7 @@ function Chatbox({
 
     function organizeBranches() {
         const ref = sessionHistory.nodes // reference 
+        console.log(ref)
         setNodeCount(Object.keys(ref).length)
         let branches = {}
         for (let i = 0; i <= Object.keys(ref).length - 1; i++) {
@@ -129,10 +130,10 @@ function Chatbox({
         setSessionHistory(result)
     }
 
-   
+
     // Branch Related Functions
 
-     async function handleReprompt(dialogdata) {
+    async function handleReprompt(dialogdata) {
         // dialogdata contains the id (number of the messages' place in the conversation) and the new prompt
         if (dialogdata.newPrompt === "") {
             throw new Error("Field cannot be empty")
@@ -193,6 +194,30 @@ function Chatbox({
     }
 
 
+    async function handleRetry(iteration) {
+        const old = sessionHistory.nodes
+        console.log(iteration)
+        const postLength = Object.keys(sessionHistory.nodes).length
+        setSessionHistory({ "current_leaf": `m${nodeCount}`, "nodes": { ...old, [`m${postLength}`]: { parent_id: `${old[iteration]["parent_id"]}`, role: "model", text: "01000011" } } })
+
+        const call = await fetch("http://localhost:8000/api/RegeneratePrompt", {
+            method: "POST",
+            credentials: "include",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                sessionKey: sessionKey,
+                iteration: Number(iteration.slice(1))
+            })
+        })
+        const res = await call.json()
+        console.log(res)
+        setSessionHistory({ "current_leaf": `m${nodeCount}`, "nodes": { ...old, ...res } })
+        setNodeCount(nodeCount + 1)
+        organizeBranches()
+    }
+
     function onBranchChange(value) {
         setSessionHistory({ ...sessionHistory, current_leaf: value })
     }
@@ -202,9 +227,6 @@ function Chatbox({
 
     }
 
-    function handleRetry() {
-
-    } 
 
 
     // UseEffects
@@ -252,8 +274,10 @@ function Chatbox({
                         i += 1
                     }
                 }
+                console.log(sessionHistory)
                 let s_node = current_leaf
                 for (let j = current_leaf; j >= 0; j--) {
+                    console.log(j)
                     if (j == s_node || nodes[`m${j}`]["parent_id"] == null & nodes[`m${j}`]["parent_id"] == "m0" || j == current_leaf) {
                         let node = { "node": `m${j}`, "parent_id": nodes[`m${j}`]["parent_id"], "role": nodes[`m${j}`]["role"], "text": nodes[`m${j}`]["text"] }
                         branch.push(node)
