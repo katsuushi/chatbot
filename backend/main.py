@@ -34,7 +34,7 @@ gemini_key = os.getenv("GEMINI_API_KEY")
 
 sysinstruct = (
     # "You are a helpful assistant, that's designed to assist the user in its problems."
-    "You are David Goggins. Diss me, but use only 3 Words."
+    "Respond with as little tokens as possible while answering to a question / random thing."
 )
 
 
@@ -132,7 +132,8 @@ async def promptFlashLite(
         temp = None
         temp2 = None
 
-        # havent tested it yet but idc
+        # This logic doesn't care on what leaf we're currently at, it falls back to the current_leaf
+        # Will need fixing but I'm too lazy for that
         while current_leaf + i <= len(nodes) - 1:
             print(f"{current_leaf}, {i}, {len(nodes)}")
             print(nodes[f"m{current_leaf + i}"])
@@ -260,6 +261,7 @@ async def reprompt(
         select(Session).where(Session.sessionKey == schema.sessionKey)
     )
     session = result.scalar_one_or_none()
+    print("s " + str(schema.iteration))
     if session is None:
         raise HTTPException(
             status_code=404, detail="Couldn't find the requested session"
@@ -268,7 +270,11 @@ async def reprompt(
         # Get the history via from session.data
         history = session.data
         nodes = history["nodes"]
-        current_leaf = int(nodes[f"m{schema.iteration}"]["parent_id"][1:])
+        current_leaf = (
+            int(nodes[f"m{schema.iteration}"]["parent_id"][1:])
+            if nodes[f"m{schema.iteration}"]["parent_id"] != None
+            else 0
+        )
         branch = []
         it = schema.iteration
 
@@ -278,22 +284,26 @@ async def reprompt(
 
         print("current_leaf: ", current_leaf)
 
-        s_node = current_leaf
-        print(nodes[f"m2"]["parent_id"] == nodes[f"m{it}"]["parent_id"])
-        for j in range(current_leaf, -1, -1):
-            if j == s_node or j == current_leaf:
-                node = {
-                    "node": f"m{j}",
-                    "parent_id": nodes[f"m{j}"]["parent_id"],
-                    "role": nodes[f"m{j}"]["role"],
-                    "text": nodes[f"m{j}"]["text"],
-                }
-                branch.append(node)
-                if j != 0:
-                    s_node = int(nodes[f"m{j}"]["parent_id"][1:])
+        if nodes[f"m{schema.iteration}"]["parent_id"] != None:
 
-            else:
-                continue
+            s_node = current_leaf
+
+            for j in range(current_leaf, -1, -1):
+                if j == s_node:
+                    node = {
+                        "node": f"m{j}",
+                        "parent_id": nodes[f"m{j}"]["parent_id"],
+                        "role": nodes[f"m{j}"]["role"],
+                        "text": nodes[f"m{j}"]["text"],
+                    }
+                    branch.append(node)
+                    if nodes[f"m{j}"]["parent_id"] == None:
+                        break
+                    if j != 0:
+                        s_node = int(nodes[f"m{j}"]["parent_id"][1:])
+
+                else:
+                    continue
         print("final it is: " + str(it))
         print("hehe")
         # print(branch)
@@ -317,11 +327,7 @@ async def reprompt(
         newNodes = {
             # Then we add the user and model node from this prompt
             f"m{str(len(nodes))}": {
-                "parent_id": (
-                    f"{str(nodes[f"m{schema.iteration}"]["parent_id"])}"
-                    if schema.iteration != 0
-                    else None
-                ),
+                "parent_id": nodes[f"m{schema.iteration}"]["parent_id"],
                 "role": "user",
                 "text": schema.newPrompt,
             },

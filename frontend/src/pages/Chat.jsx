@@ -27,7 +27,6 @@ function Chat() {
             );
             const res = await call.json();
             setUserSessions(res.reverse());
-            console.log(res);
         }
         loadAllSessions();
     }, []);
@@ -55,14 +54,11 @@ function Chat() {
     }
 
     function initChatKey(data) {
-        console.log("chatkey data");
-        console.log(data);
         setCurrentSession({ skey: data.newSKey, sname: data.newSName });
     }
 
     function handleSession(data) {
         setCurrentSession(data);
-        console.log(data);
     }
 
     function handleBurger() {
@@ -78,7 +74,6 @@ function Chat() {
             const call = await fetch("http://localhost:8000/users/me", {
                 credentials: "include",
             });
-            console.log(call.status);
             if (call.ok) {
                 const res = await call.json()
                 //if (res.is_verified == false) {
