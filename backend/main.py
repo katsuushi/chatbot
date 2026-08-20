@@ -29,14 +29,12 @@ from users import (
     current_active_verified_user,
 )
 import uuid
+from routes.ContextRoutes import *
+from routes.DebugRoutes import *
+from routes.ChatRoutes import *
 
 load_dotenv()
 gemini_key = os.getenv("GEMINI_API_KEY")
-
-sysinstruct = (
-    # "You are a helpful assistant, that's designed to assist the user in its problems."
-    "Respond with as little tokens as possible while answering to a question / random thing."
-)
 
 
 @asynccontextmanager
@@ -100,16 +98,10 @@ async def promptFlashLite(
     db: AsyncSession = Depends(get_asyncsession),
     user: User = Depends(current_active_verified_user),
 ):
-    print(session)
     res = await db.execute(select(Session).where(Session.sessionKey == session))
     rows = res.scalar_one_or_none()
     if rows is None:
-
-        chat = gemini_client.aio.chats.create(
-            model="gemini-3.1-flash-lite",
-            config={"system_instruction": sysinstruct},
-        )
-
+        response = await Chat(gemini_client, None, prompt.prompt)
         # Creating the session to the db
         chatsession = Session(
             data={"current_leaf": "m-1", "nodes": {}},
@@ -123,67 +115,20 @@ async def promptFlashLite(
     else:
         history = rows.data
         nodes = history["nodes"]
-        reversednodes = dict(reversed(list(nodes.items())))
-        llmhistoryparsed = []
         current_leaf = int(history["current_leaf"][1:])
+        llmhistoryparsed = BuildContext(nodes, current_leaf)
 
-        # We're starting at the current_leaf and go up, checking if there's anything past that leaf
-        # Then we establish the highest descendant and iterate from reverse from that leaf
-        i = 1
-        temp = None
-        temp2 = None
+        response = await Chat(gemini_client, llmhistoryparsed, prompt.prompt)
 
-        # This logic doesn't care on what leaf we're currently at, it falls back to the current_leaf
-        # Will need fixing but I'm too lazy for that
-        while current_leaf + i <= len(nodes) - 1:
-            print(f"{current_leaf}, {i}, {len(nodes)}")
-            print(nodes[f"m{current_leaf + i}"])
-            if nodes[f"m{current_leaf + i}"]["parent_id"] == f"m{current_leaf}":
-                print("pass")
-                temp = current_leaf + i + 1
-                temp2 = current_leaf + i
-                while temp <= len(nodes) - 1:
-                    if nodes[f"m{temp}"]["parent_id"] == f"m{current_leaf}":
-                        temp2 = temp
-                    temp += 1
-                current_leaf = temp2
-                i = 1
-            else:
-                print("fail")
-                i += 1
-        # Creating the context
-        s_node = int(nodes[f"m{current_leaf}"]["parent_id"][1:])
-        for i in range(current_leaf, -1, -1):
-            if (
-                i == s_node
-                or nodes[f"m{i}"]["parent_id"][1:] == None
-                and nodes[f"m{i}"]["parent_id"] == "m0"
-                or i == current_leaf
-            ):
-                node = {
-                    "role": nodes[f"m{i}"]["role"],
-                    "parts": [{"text": nodes[f"m{i}"]["text"]}],
-                }
-                llmhistoryparsed.append(node)
-                if i != 0:
-                    s_node = int(nodes[f"m{i}"]["parent_id"][1:])
-            else:
-                continue
-
-        chat = gemini_client.aio.chats.create(
-            model="gemini-3.1-flash-lite",
-            config={"system_instruction": sysinstruct},
-            history=llmhistoryparsed.reverse(),
-        )
-        # fix your backend you stupid fuck
-        # i fixed it
     history = rows.data
     current_leaf = int(history["current_leaf"][1:])
     print(current_leaf)
     previous_nodes = history["nodes"]
 
-    response = await chat.send_message(prompt.prompt)
-
+    # I'd do a helper function for that
+    # TODO: Return the response as a {m5: {....}}
+    # This way no need to do excessive stuff on the frontend
+    # Needs a rewrite but oh well
     rows.data = {
         # We add all previous nodes
         "current_leaf": f"m{str(current_leaf + 1)}",
@@ -209,13 +154,13 @@ async def promptFlashLite(
             f"m{str(len(previous_nodes)+1)}": {
                 "parent_id": f"m{str(len(previous_nodes))}",
                 "role": "model",
-                "text": response.text,
+                "text": response,
             },
         },
     }
 
     await db.commit()
-    return response.text
+    return response
 
 
 @app.post("/api/promptTemporary")
