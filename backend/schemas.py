@@ -18,7 +18,7 @@ class UserUpdate(schemas.BaseUserUpdate):
 
 class Prompt(BaseModel):
     prompt: str
-
+    currentleaf: str | None = None # from this we will build context
 
 class TemporaryPrompt(BaseModel):
     prompt: str
@@ -37,6 +37,7 @@ class RepromptTemporary(BaseModel):
     iteration: int
     newPrompt: str
     history: list
+
 
 class InsertData(BaseModel):
     data: dict

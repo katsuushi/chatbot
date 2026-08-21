@@ -147,7 +147,7 @@ async def promptFlashLite(
     }
     rows.data = UpdateHistory(nodes, newNodes)
     await db.commit()
-    return response
+    return newNodes
 
 
 @app.post("/api/promptTemporary")

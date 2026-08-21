@@ -1,4 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useContext } from "react";
+import { SessionContext } from "../contexts/sessionContext";
+
 import Bottombar from "./Bottombar";
 import LLmResponseBox from "./LLmResponseBox";
 import UserResponseBox from "./UserResponseBox";
@@ -23,6 +25,8 @@ function Chatbox({
     const [loading, setLoading] = useState(true);
     const [tempHistory, setTempHistory] = useState([]);
 
+    const { loadFn } = useContext(SessionContext);
+    const regex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
     if (sessionName == null) {
         sessionName = "undefined";
@@ -44,19 +48,68 @@ function Chatbox({
     // Prompt / Response Functions
     function handleResponse(data) {
         if (sessionKey != "temp") {
-            const postLength = Object.keys(sessionHistory.nodes).length
-            const newSessionData = { current_leaf: `m${Number(nodeCount - 1) + 2}`, nodes: { ...sessionHistory.nodes, [`m${postLength}`]: { parent_id: `m${postLength - 1}`, role: "user", text: data.prompt }, [`m${postLength + 1}`]: { parent_id: `m${postLength}`, role: "model", text: data.response } } }
-            const value = Number(nodeCount - 1) + 2
-            setSessionHistory({ ...sessionHistory, current_leaf: `m${value}` })
-            setSessionHistory(newSessionData)
+            setSessionHistory({ current_leaf: `m${nodeCount + 1}`, nodes: { ...sessionHistory.nodes, ...data } })
             setNodeCount(nodeCount + 2)
         } else {
             setTempHistory([...tempHistory, data])
         }
     }
 
+    let reloadSessions = false;
+    async function handlePrompting(prompt) {
+        if (
+            sessionKey == "new" ||
+            sessionKey === undefined ||
+            sessionKey == "undefined"
+        ) {
+            console.log("generating a session key");
+            sessionKey = crypto.randomUUID();
+            reloadSessions = true;
+        }
+        if (prompt === "") {
+            throw new Error
+        }
+        handleTempMessage(prompt)
+
+        console.log("fetching with this session: " + sessionKey);
+        try {
+            if (sessionKey !== "temp") {
+                const result = await fetch(
+                    `http://localhost:8000/api/promptFlashLite?session=${sessionKey}`,
+                    {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                        },
+                        body: JSON.stringify({
+                            prompt: prompt,
+                        }),
+                        credentials: "include",
+                    },
+                );
+
+                if (!result.ok) {
+                    console.log("not ok")
+                } else {
+                    const data = await result.json();
+                    console.log(data)
+                    handleResponse(data);
+                    ChangeSession(sessionKey)
+                }
+            }
+            if (reloadSessions && sessionKey !== "temp") {
+                loadFn && loadFn();
+                initKey({ newSKey: sessionKey, newSName: prompt });
+            }
+
+        } catch (error) {
+            console.log("what the fuck is the error") 
+            console.log(error)
+        }
+    }
 
     function initKey(data) {
+        // Switches session
         initChatKey(data);
     }
 
@@ -91,9 +144,9 @@ function Chatbox({
 
 
     // Session loading / organizing functions
-
     function organizeBranches() {
         const ref = sessionHistory.nodes // reference 
+        console.log(sessionHistory)
         console.log(ref)
         setNodeCount(Object.keys(ref).length)
         let branches = {}
@@ -222,7 +275,7 @@ function Chatbox({
         setSessionHistory({ ...sessionHistory, current_leaf: value })
     }
 
-    function leafIncremention(key) {
+    function ChangeSession(key) {
         setCurrentSession(key)
 
     }
@@ -244,7 +297,7 @@ function Chatbox({
     useEffect(() => {
         function generateBranch() {
             // checking if sessionKey is a uuid
-            if (/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(sessionKey) == true) {
+            if (regex.test(sessionKey) == true) {
                 let current_leaf = Number(sessionHistory.current_leaf.slice(1))
                 const nodes = sessionHistory.nodes
                 let branch = []
@@ -386,12 +439,7 @@ function Chatbox({
             </div>
 
             <Bottombar
-                response={handleResponse}
-                session={sessionKey}
-                initKey={initKey}
-                temporaryHistory={tempHistory}
-                tempMessage={handleTempMessage}
-                leafIncremention={leafIncremention}
+                sendPrompt={handlePrompting}
             />
             <div className="w-[100%] h-[15vh]"></div>
         </div>
