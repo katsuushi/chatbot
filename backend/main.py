@@ -7,6 +7,7 @@ from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi_users import FastAPIUsers
 from google import genai
+from routes.DbRoutes import UpdateHistory
 from sqlalchemy import select
 
 from db import AsyncSession, Session, User, create_db_and_tables, get_asyncsession
@@ -32,6 +33,7 @@ import uuid
 from routes.ContextRoutes import *
 from routes.DebugRoutes import *
 from routes.ChatRoutes import *
+from routes.DbRoutes import *
 
 load_dotenv()
 gemini_key = os.getenv("GEMINI_API_KEY")
@@ -109,9 +111,10 @@ async def promptFlashLite(
             owner_id=user.id,
             sessionName=prompt.prompt,
         )
-
         db.add(chatsession)
         rows = chatsession
+        history = rows.data
+
     else:
         history = rows.data
         nodes = history["nodes"]
@@ -120,45 +123,29 @@ async def promptFlashLite(
 
         response = await Chat(gemini_client, llmhistoryparsed, prompt.prompt)
 
-    history = rows.data
     current_leaf = int(history["current_leaf"][1:])
     print(current_leaf)
-    previous_nodes = history["nodes"]
+    nodes = history["nodes"]
 
     # I'd do a helper function for that
     # TODO: Return the response as a {m5: {....}}
     # This way no need to do excessive stuff on the frontend
     # Needs a rewrite but oh well
-    rows.data = {
-        # We add all previous nodes
-        "current_leaf": f"m{str(current_leaf + 1)}",
-        "nodes": {
-            node: {
-                "parent_id": previous_nodes[node]["parent_id"],
-                "role": previous_nodes[node]["role"],
-                "text": previous_nodes[node]["text"],
-            }
-            for node in previous_nodes
-        }
-        | {
-            # Then we add the user and model node from this prompt
-            f"m{str(len(previous_nodes))}": {
-                "parent_id": (
-                    f"m{str(len(previous_nodes)-1)}"
-                    if len(previous_nodes) != 0
-                    else None
-                ),
-                "role": "user",
-                "text": prompt.prompt,
-            },
-            f"m{str(len(previous_nodes)+1)}": {
-                "parent_id": f"m{str(len(previous_nodes))}",
-                "role": "model",
-                "text": response,
-            },
+
+    newNodes = {
+        # Then we add the user and model node from this prompt
+        f"m{str(len(nodes))}": {
+            "parent_id": (f"m{str(len(nodes)-1)}" if len(nodes) != 0 else None),
+            "role": "user",
+            "text": prompt.prompt,
+        },
+        f"m{str(len(nodes)+1)}": {
+            "parent_id": f"m{str(len(nodes))}",
+            "role": "model",
+            "text": response,
         },
     }
-
+    rows.data = UpdateHistory(nodes, newNodes)
     await db.commit()
     return response
 
