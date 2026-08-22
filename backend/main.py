@@ -95,21 +95,22 @@ def pong():
 
 @app.post("/api/promptFlashLite")
 async def promptFlashLite(
-    prompt: Prompt,
+    schema: Prompt,
     session: uuid.UUID,
     db: AsyncSession = Depends(get_asyncsession),
     user: User = Depends(current_active_verified_user),
 ):
     res = await db.execute(select(Session).where(Session.sessionKey == session))
     rows = res.scalar_one_or_none()
+
     if rows is None:
-        response = await Chat(gemini_client, None, prompt.prompt)
+        response = await Chat(gemini_client, None, schema.prompt)
         # Creating the session to the db
         chatsession = Session(
             data={"current_leaf": "m-1", "nodes": {}},
             sessionKey=session,
             owner_id=user.id,
-            sessionName=prompt.prompt,
+            sessionName=schema.prompt,
         )
         db.add(chatsession)
         rows = chatsession
@@ -118,26 +119,20 @@ async def promptFlashLite(
     else:
         history = rows.data
         nodes = history["nodes"]
-        current_leaf = int(history["current_leaf"][1:])
+        current_leaf = int(schema.currentleaf[1:])
         llmhistoryparsed = BuildContext(nodes, current_leaf)
 
-        response = await Chat(gemini_client, llmhistoryparsed, prompt.prompt)
+        response = await Chat(gemini_client, llmhistoryparsed, schema.prompt)
 
-    current_leaf = int(history["current_leaf"][1:])
     print(current_leaf)
     nodes = history["nodes"]
-
-    # I'd do a helper function for that
-    # TODO: Return the response as a {m5: {....}}
-    # This way no need to do excessive stuff on the frontend
-    # Needs a rewrite but oh well
 
     newNodes = {
         # Then we add the user and model node from this prompt
         f"m{str(len(nodes))}": {
             "parent_id": (f"m{str(len(nodes)-1)}" if len(nodes) != 0 else None),
             "role": "user",
-            "text": prompt.prompt,
+            "text": schema.prompt,
         },
         f"m{str(len(nodes)+1)}": {
             "parent_id": f"m{str(len(nodes))}",

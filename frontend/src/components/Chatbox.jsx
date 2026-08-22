@@ -38,7 +38,7 @@ function Chatbox({
     }
 
     function debug1() {
-        console.log(branches);
+        console.log(responses.at(-1)["rnode"]);
     }
 
     function debug2() {
@@ -73,6 +73,7 @@ function Chatbox({
 
         console.log("fetching with this session: " + sessionKey);
         try {
+            const last_leaf = (responses.length != 0 ? responses.at(-1)["rnode"] : null)
             if (sessionKey !== "temp") {
                 const result = await fetch(
                     `http://localhost:8000/api/promptFlashLite?session=${sessionKey}`,
@@ -83,6 +84,7 @@ function Chatbox({
                         },
                         body: JSON.stringify({
                             prompt: prompt,
+                            currentleaf: last_leaf
                         }),
                         credentials: "include",
                     },
@@ -103,7 +105,7 @@ function Chatbox({
             }
 
         } catch (error) {
-            console.log("what the fuck is the error") 
+            console.log("what the fuck is the error")
             console.log(error)
         }
     }
@@ -159,17 +161,21 @@ function Chatbox({
     }
 
     async function loadSession() {
+
         setTempHistory([])
         setLoading(true);
         setPrevResponses(responses);
         setBranches({})
         setResponses([]);
+
         if (
             sessionKey == "new" ||
             sessionKey === undefined ||
             sessionKey == "undefined" ||
             sessionKey === "temp"
         ) {
+            setSessionHistory({ current_leaf: "m0", nodes: {} })
+
             setLoading(false);
             return;
         }
