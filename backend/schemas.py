@@ -18,20 +18,26 @@ class UserUpdate(schemas.BaseUserUpdate):
 
 class Prompt(BaseModel):
     prompt: str
-    currentleaf: str | None = None # from this we will build context
+    sessionKey: str 
+    currentleaf: str  # from this we will build context
+    tempHistory: dict | None = None
+
 
 class TemporaryPrompt(BaseModel):
     prompt: str
     history: list
+
 
 class Reprompt(BaseModel):
     sessionKey: uuid.UUID
     iteration: int
     newPrompt: str
 
+
 class RegeneratePrompt(BaseModel):
     sessionKey: uuid.UUID
     iteration: int
+
 
 class RepromptTemporary(BaseModel):
     iteration: int

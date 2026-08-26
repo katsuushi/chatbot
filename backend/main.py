@@ -96,35 +96,58 @@ def pong():
 @app.post("/api/promptFlashLite")
 async def promptFlashLite(
     schema: Prompt,
-    session: uuid.UUID,
     db: AsyncSession = Depends(get_asyncsession),
     user: User = Depends(current_active_verified_user),
 ):
-    res = await db.execute(select(Session).where(Session.sessionKey == session))
-    rows = res.scalar_one_or_none()
-
-    if rows is None:
-        response = await Chat(gemini_client, None, schema.prompt)
-        # Creating the session to the db
-        chatsession = Session(
-            data={"current_leaf": "m-1", "nodes": {}},
-            sessionKey=session,
-            owner_id=user.id,
-            sessionName=schema.prompt,
+    if not schema.tempHistory and not schema.sessionKey:
+        raise HTTPException(
+            status_code=422, detail="Neither tempHistory or sessionKey was inserted."
         )
-        db.add(chatsession)
-        rows = chatsession
-        history = rows.data
+
+    historyparsed = None
+    current_leaf = int(schema.currentleaf[1:])
+
+    if not schema.tempHistory:
+        print(schema.sessionKey)
+        sessionKey = uuid.UUID(schema.sessionKey)
+
+        res = await db.execute(select(Session).where(Session.sessionKey == sessionKey))
+        rows = res.scalar_one_or_none()
+
+        if rows is None:
+            # Creating the session to the db
+            chatsession = Session(
+                data={"current_leaf": "m-1", "nodes": {}},
+                sessionKey=sessionKey,
+                owner_id=user.id,
+                sessionName=schema.prompt,
+            )
+            db.add(chatsession)
+            rows = chatsession
+            history = rows.data
+
+        else:
+            history = rows.data
+
+            nodes = history["nodes"]
+            historyparsed = BuildContext(nodes, current_leaf)
 
     else:
-        history = rows.data
-        nodes = history["nodes"]
-        current_leaf = int(schema.currentleaf[1:])
-        llmhistoryparsed = BuildContext(nodes, current_leaf)
+        print("Detected Temporary")
+        try:
+            history = schema.tempHistory
+            nodes = history["nodes"]
+            if len(nodes) != 0:
+                historyparsed = BuildContext(nodes, current_leaf)
+                # Didn't test what happens if its empty so I play safe
+        except Exception as e:
+            print(e)
+            raise HTTPException(
+                status_code=422,
+                detail="Problem while building the context / accessing tempHistory",
+            )
+    response = await Chat(gemini_client, historyparsed, schema.prompt)
 
-        response = await Chat(gemini_client, llmhistoryparsed, schema.prompt)
-
-    print(current_leaf)
     nodes = history["nodes"]
 
     newNodes = {
@@ -140,8 +163,9 @@ async def promptFlashLite(
             "text": response,
         },
     }
-    rows.data = UpdateHistory(nodes, newNodes)
-    await db.commit()
+    if not schema.tempHistory:
+        rows.data = UpdateHistory(nodes, newNodes)
+        await db.commit()
     return newNodes
 
 

@@ -13,17 +13,18 @@ function Chatbox({
     initChatKey,
     triggerTemp,
 }) {
-    const [sessionHistory, setSessionHistory] = useState({ current_leaf: "m0", nodes: {} }) // session data  
+    const [sessionHistory, setSessionHistory] = useState({ current_leaf: "m-1", nodes: {} }) // session data  
     const [responses, setResponses] = useState([]); // branch
     const [nodeCount, setNodeCount] = useState(0) // amount of nodes in sessionhistory
     const [branches, setBranches] = useState({}) // stores the amount of branches a node has
 
+    const [tempHistory, setTempHistory] = useState({ current_leaf: "m-1", nodes: {} });
+    const [tempResponses, setTempResponses] = useState([])
+
     const [leftbar, setLeftbar] = useState(false);
     const [prevResponses, setPrevResponses] = useState([]);
     const [currentSession, setCurrentSession] = useState(sessionKey); // session key
-    const [temporary, setTemporary] = useState(false);
     const [loading, setLoading] = useState(true);
-    const [tempHistory, setTempHistory] = useState([]);
 
     const { loadFn } = useContext(SessionContext);
     const regex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
@@ -51,7 +52,9 @@ function Chatbox({
             setSessionHistory({ current_leaf: `m${nodeCount + 1}`, nodes: { ...sessionHistory.nodes, ...data } })
             setNodeCount(nodeCount + 2)
         } else {
-            setTempHistory([...tempHistory, data])
+            const tempNodeCount = Object.keys(tempHistory.nodes).length
+            setTempHistory({ current_leaf: `m${tempNodeCount + 1}`, nodes: { ...tempHistory.nodes, ...data } })
+
         }
     }
 
@@ -73,32 +76,35 @@ function Chatbox({
 
         console.log("fetching with this session: " + sessionKey);
         try {
-            const last_leaf = (responses.length != 0 ? responses.at(-1)["rnode"] : null)
-            if (sessionKey !== "temp") {
-                const result = await fetch(
-                    `http://localhost:8000/api/promptFlashLite?session=${sessionKey}`,
-                    {
-                        method: "POST",
-                        headers: {
-                            "Content-Type": "application/json",
-                        },
-                        body: JSON.stringify({
-                            prompt: prompt,
-                            currentleaf: last_leaf
-                        }),
-                        credentials: "include",
+            const last_leaf = (regex.test(sessionKey) ? (responses.length != 0 ? responses.at(-1)["rnode"] : "m-1") : (tempResponses.length != 0 ? tempResponses.at(-1)["rnode"] : "m-1"))
+            console.log(last_leaf)
+            const result = await fetch(
+                `http://localhost:8000/api/promptFlashLite`,
+                {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
                     },
-                );
+                    body: JSON.stringify({
+                        prompt: prompt,
+                        sessionKey: sessionKey,
+                        currentleaf: last_leaf,
+                        tempHistory: (regex.test(sessionKey) ? null : tempHistory)
+                    }),
+                    credentials: "include",
+                },
+            );
+            const data = await result.json();
 
-                if (!result.ok) {
-                    console.log("not ok")
-                } else {
-                    const data = await result.json();
-                    console.log(data)
-                    handleResponse(data);
-                    ChangeSession(sessionKey)
-                }
+            if (!result.ok) {
+                console.log("not ok")
+                console.log(data)
+            } else {
+                console.log(data)
+                handleResponse(data);
+                !regex.test(sessionKey) && ChangeSession(sessionKey)
             }
+
             if (reloadSessions && sessionKey !== "temp") {
                 loadFn && loadFn();
                 initKey({ newSKey: sessionKey, newSName: prompt });
@@ -116,15 +122,15 @@ function Chatbox({
     }
 
     function handleTemporary() {
-        if (sessionKey === "temp") {
+        if (sessionKey == "temp") {
             // triggerTemp is a prop that calls a function which changes the session key to the value
             triggerTemp("new")
-            setTempHistory([])
+
+            setTempHistory({ current_leaf: "m-1", nodes: {} })
         } else {
             triggerTemp("temp")
-        }
-        setTemporary(!temporary);
 
+        }
     }
 
     function handleTempMessage(prompt) {
@@ -162,11 +168,11 @@ function Chatbox({
 
     async function loadSession() {
 
-        setTempHistory([])
         setLoading(true);
         setPrevResponses(responses);
         setBranches({})
         setResponses([]);
+        setTempHistory({ current_leaf: "m-1", nodes: {} })
 
         if (
             sessionKey == "new" ||
@@ -174,7 +180,7 @@ function Chatbox({
             sessionKey == "undefined" ||
             sessionKey === "temp"
         ) {
-            setSessionHistory({ current_leaf: "m0", nodes: {} })
+            setSessionHistory({ current_leaf: "m-1", nodes: {} })
 
             setLoading(false);
             return;
@@ -191,6 +197,81 @@ function Chatbox({
 
 
     // Branch Related Functions
+
+    function generateBranch() {
+        let current_leaf;
+        let nodes;
+        console.log(sessionHistory)
+        console.log(tempHistory)
+        // checking if sessionKey is a uuid
+        if (regex.test(sessionKey) == true) {
+            current_leaf = Number(sessionHistory.current_leaf.slice(1))
+            nodes = sessionHistory.nodes
+        } else {
+            current_leaf = Number(tempHistory.current_leaf.slice(1))
+            nodes = tempHistory.nodes
+        }
+        let branch = []
+        let sets = []
+
+        console.log(nodes)
+
+        // Similar logic to backend - start at current_leaf, get the highest descendant
+        // then iterate in reverse
+
+        let i = 1
+        let temp;
+        let temp2;
+        while (current_leaf + i <= Object.keys(nodes).length - 1) {
+            if (nodes[`m${current_leaf + i}`]["parent_id"] == `m${current_leaf}`) {
+                temp = current_leaf + i + 1
+                temp2 = current_leaf + i
+                while (temp <= Object.keys(nodes).length - 1) {
+                    if (nodes[`m${temp}`]["parent_id"] == `m${current_leaf}`) {
+                        temp2 = temp
+                    }
+                    temp++
+                }
+
+                current_leaf = temp2
+                i = 1
+            } else {
+                i += 1
+            }
+        }
+        console.log(sessionHistory)
+        let s_node = current_leaf
+        for (let j = current_leaf; j >= 0; j--) {
+            console.log(j)
+            if (j == s_node || nodes[`m${j}`]["parent_id"] == null & nodes[`m${j}`]["parent_id"] == "m0" || j == current_leaf) {
+                let node = { "node": `m${j}`, "parent_id": nodes[`m${j}`]["parent_id"], "role": nodes[`m${j}`]["role"], "text": nodes[`m${j}`]["text"] }
+                branch.push(node)
+                if (nodes[`m${j}`]["parent_id"] == null) {
+                    break
+                }
+                if (j != 0) {
+                    s_node = (nodes[`m${j}`]["parent_id"] != null && Number(nodes[`m${j}`]["parent_id"].slice(1)))
+                }
+            } else {
+                continue
+            }
+        }
+
+        console.log(branch)
+        // Now we generate the sets
+        for (let k = 0; k < branch.length; k = k + 2) {
+            const set = {
+                "prompt": branch[k + 1]["text"], "response": branch[k]["text"], "pnode": branch[k + 1]["node"], "rnode": branch[k]["node"], "ppid": branch[k + 1]["parent_id"], "rpid": branch[k]["parent_id"]
+            }
+            sets.unshift(set)
+        }
+        regex.test(sessionKey) ? setResponses(sets) : setTempResponses(sets)
+        setTimeout(() => {
+            setLoading(false)
+        }, 10)
+    }
+
+
 
     async function handleReprompt(dialogdata) {
         // dialogdata contains the id (number of the messages' place in the conversation) and the new prompt
@@ -301,73 +382,9 @@ function Chatbox({
 
     // This useEffect is responsible for generating the current branch - or what we see on the site
     useEffect(() => {
-        function generateBranch() {
-            // checking if sessionKey is a uuid
-            if (regex.test(sessionKey) == true) {
-                let current_leaf = Number(sessionHistory.current_leaf.slice(1))
-                const nodes = sessionHistory.nodes
-                let branch = []
-                let sets = []
-                console.log(nodes)
-
-                // Similar logic to backend - start at current_leaf, get the highest descendant
-                // then iterate in reverse
-
-                let i = 1
-                let temp;
-                let temp2;
-                while (current_leaf + i <= Object.keys(nodes).length - 1) {
-                    if (nodes[`m${current_leaf + i}`]["parent_id"] == `m${current_leaf}`) {
-                        temp = current_leaf + i + 1
-                        temp2 = current_leaf + i
-                        while (temp <= Object.keys(nodes).length - 1) {
-                            if (nodes[`m${temp}`]["parent_id"] == `m${current_leaf}`) {
-                                temp2 = temp
-                            }
-                            temp++
-                        }
-
-                        current_leaf = temp2
-                        i = 1
-                    } else {
-                        i += 1
-                    }
-                }
-                console.log(sessionHistory)
-                let s_node = current_leaf
-                for (let j = current_leaf; j >= 0; j--) {
-                    console.log(j)
-                    if (j == s_node || nodes[`m${j}`]["parent_id"] == null & nodes[`m${j}`]["parent_id"] == "m0" || j == current_leaf) {
-                        let node = { "node": `m${j}`, "parent_id": nodes[`m${j}`]["parent_id"], "role": nodes[`m${j}`]["role"], "text": nodes[`m${j}`]["text"] }
-                        branch.push(node)
-                        if (nodes[`m${j}`]["parent_id"] == null) {
-                            break
-                        }
-                        if (j != 0) {
-                            s_node = (nodes[`m${j}`]["parent_id"] != null && Number(nodes[`m${j}`]["parent_id"].slice(1)))
-                        }
-                    } else {
-                        continue
-                    }
-                }
-
-                console.log(branch)
-                // Now we generate the sets
-                for (let k = 0; k < branch.length; k = k + 2) {
-                    const set = {
-                        "prompt": branch[k + 1]["text"], "response": branch[k]["text"], "pnode": branch[k + 1]["node"], "rnode": branch[k]["node"], "ppid": branch[k + 1]["parent_id"], "rpid": branch[k]["parent_id"]
-                    }
-                    sets.unshift(set)
-                }
-                setResponses(sets)
-                setTimeout(() => {
-                    setLoading(false)
-                }, 10)
-            }
-        }
         generateBranch()
 
-    }, [nodeCount, sessionHistory.nodes, sessionHistory.current_leaf])
+    }, [nodeCount, sessionHistory.nodes, sessionHistory.current_leaf, tempHistory.nodes])
 
     return (
         <div className="bg-[#202020] w-full min-h-[100dvh] text-white flex flex-col items-center justify-between text-2xl">
@@ -406,7 +423,7 @@ function Chatbox({
                             <UserResponseBox responseid={i} text={res.prompt} branches={branches[res.pnode]} branchChange={onBranchChange} repromptCall={handleReprompt} />
                             <LLmResponseBox text={res.response} branches={branches[res.rnode]} branchChange={onBranchChange} />                        </div>
                     ))
-                ) : sessionKey === "temp" & (tempHistory.length == 0) ? (
+                ) : sessionKey === "temp" & (tempResponses.length == 0) ? (
                     <div className="h-[50vh] mt-24 text-center flex flex-col justify-center items-center">
                         {" "}
                         <h1>Temporary chat</h1>
@@ -415,13 +432,16 @@ function Chatbox({
                             servers.
                         </p>
                     </div>
-                ) : sessionKey === "temp" & (tempHistory.length != 0) ? (
-                    tempHistory.map(
+                ) : sessionKey === "temp" & (tempResponses.length != 0) ? (
+                    tempResponses.map(
                         (res, i) => (
+
                             <div key={i}>
-                                <UserResponseBox responseid={Number(res.pnode.slice(1))} text={res.prompt} branches={branches[res.pnode]} branchChange={onBranchChange} repromptCall={handleReprompt} />
-                                <LLmResponseBox text={res.response} branches={branches[res.rnode]} branchChange={onBranchChange} />                            </div>
-                        )
+                                <UserResponseBox iteration={i} responseid={res.pnode ? Number(res.pnode.slice(1)) : i} text={res.prompt} branches={res.ppid in branches && branches[res.ppid]} branchChange={onBranchChange} repromptCall={handleReprompt} name={res.pnode} />
+                                <LLmResponseBox text={res.response} branches={res.rpid in branches && branches[res.rpid]} branchChange={onBranchChange} retryTrigger={handleRetry} nodeInfo={res.rnode} />
+
+                            </div>
+                        ),
                     )
                 ) : responses.length == 0 ? (
                     <div className="h-[50vh] mt-16 text-center flex justify-center items-center">
