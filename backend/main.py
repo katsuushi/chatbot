@@ -169,39 +169,6 @@ async def promptFlashLite(
     return newNodes
 
 
-@app.post("/api/promptTemporary")
-async def promptTemporary(
-    schema: TemporaryPrompt,
-    user: User = Depends(current_active_verified_user),
-):
-    # Because LLm handles the history dict a bit different than our frontend we convert it
-    history = []
-    for i in schema.history:
-        history.append({"role": "user", "text": i["prompt"]})
-        history.append({"role": "model", "text": i["response"]})
-
-    chat = gemini_client.aio.chats.create(
-        model="gemini-3.1-flash-lite",
-        config={"system_instruction": sysinstruct},
-        history=[
-            {"role": msg["role"], "parts": [{"text": msg["text"]}]} for msg in history
-        ],
-    )
-
-    response = await chat.send_message(schema.prompt)
-
-    # convert the history into a frontend friendly format so we don't write more code in the frontend
-    formatted = []
-    for i in range(0, len(history), 2):
-        formatted.append(
-            {"prompt": history[i]["text"], "response": history[i + 1]["text"]}
-        )
-
-    formatted.append({"prompt": schema.prompt, "response": response.text})
-
-    return response.text
-
-
 @app.post("/api/reprompt")
 async def reprompt(
     schema: Reprompt,
@@ -237,29 +204,7 @@ async def reprompt(
         print("current_leaf: ", current_leaf)
 
         if nodes[f"m{schema.iteration}"]["parent_id"] != None:
-
-            s_node = current_leaf
-
-            for j in range(current_leaf, -1, -1):
-                if j == s_node:
-                    node = {
-                        "node": f"m{j}",
-                        "parent_id": nodes[f"m{j}"]["parent_id"],
-                        "role": nodes[f"m{j}"]["role"],
-                        "text": nodes[f"m{j}"]["text"],
-                    }
-                    branch.append(node)
-                    if nodes[f"m{j}"]["parent_id"] == None:
-                        break
-                    if j != 0:
-                        s_node = int(nodes[f"m{j}"]["parent_id"][1:])
-
-                else:
-                    continue
-        print("final it is: " + str(it))
-        print("hehe")
-        print(branch)
-
+            branch = PartialContext(current_leaf, nodes)
         cutbranch = branch
         print(cutbranch)
         cutbranch.reverse()
@@ -339,24 +284,7 @@ async def RegeneratePrompt(
 
         if nodes[f"m{schema.iteration}"]["parent_id"] != None:
 
-            s_node = current_leaf
-
-            for j in range(current_leaf, -1, -1):
-                if j == s_node:
-                    node = {
-                        "node": f"m{j}",
-                        "parent_id": nodes[f"m{j}"]["parent_id"],
-                        "role": nodes[f"m{j}"]["role"],
-                        "text": nodes[f"m{j}"]["text"],
-                    }
-                    branch.append(node)
-                    if nodes[f"m{j}"]["parent_id"] == None:
-                        break
-                    if j != 0:
-                        s_node = int(nodes[f"m{j}"]["parent_id"][1:])
-
-                else:
-                    continue
+            branch = PartialContext(current_leaf, nodes)
 
         cutbranch = branch
         cutbranch.reverse()
@@ -400,47 +328,6 @@ async def RegeneratePrompt(
         # Due to the similarity of this route and the reprompt I'll probably merge them into one later.
 
 
-@app.post("/api/repromptTemporary")
-async def repromptTemporary(
-    schema: RepromptTemporary,
-    user: User = Depends(current_active_verified_user),
-):
-    history = schema.history
-    iteration = (
-        schema.iteration
-    )  # Due to how frontend handles the sessions' conversation array we don't need to multiply by 2
-    newBranch = history[:iteration]
-
-    print(history)
-
-    # Because LLm handles the history dict a bit different than our frontend we convert it
-    history = []
-    for i in newBranch:
-        history.append({"role": "user", "text": i["prompt"]})
-        history.append({"role": "model", "text": i["response"]})
-
-    chat = gemini_client.aio.chats.create(
-        model="gemini-3.1-flash-lite",
-        config={"system_instruction": sysinstruct},
-        history=[
-            {"role": msg["role"], "parts": [{"text": msg["text"]}]} for msg in history
-        ],
-    )
-
-    response = await chat.send_message(schema.newPrompt)
-
-    # we can now convert it into a frontend friendly format so we don't write more code in the frontend
-    newBranch = []
-    for i in range(0, len(history), 2):
-        newBranch.append(
-            {"prompt": history[i]["text"], "response": history[i + 1]["text"]}
-        )
-
-    newBranch.append({"prompt": schema.newPrompt, "response": response.text})
-
-    return newBranch
-
-
 @app.get("/api/loadSession")
 async def loadSession(
     session: uuid.UUID,
@@ -458,8 +345,7 @@ async def loadSession(
             status_code=403, detail="You are not the owner of the session."
         )
     else:
-        history = row.data
-        return history
+        return row.data
 
 
 @app.delete("/api/deleteSession")

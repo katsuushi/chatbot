@@ -36,3 +36,26 @@ def BuildContext(nodes, current_leaf):
         else:
             continue
     return list(reversed(llmhistoryparsed))
+
+
+def PartialContext(current_leaf, nodes):
+    # Used for reprompt and regeneratePrompt route, builds history from a current_leaf and DOESN'T look beyond.
+    s_node = current_leaf
+    branch = []
+    for j in range(current_leaf, -1, -1):
+        if j == s_node:
+            node = {
+                "node": f"m{j}",
+                "parent_id": nodes[f"m{j}"]["parent_id"],
+                "role": nodes[f"m{j}"]["role"],
+                "text": nodes[f"m{j}"]["text"],
+            }
+            branch.append(node)
+            if nodes[f"m{j}"]["parent_id"] == None:
+                break
+            if j != 0:
+                s_node = int(nodes[f"m{j}"]["parent_id"][1:])
+
+        else:
+            continue
+    return branch
