@@ -22,27 +22,17 @@ class Prompt(BaseModel):
     currentleaf: str  # from this we will build context
     tempHistory: dict | None = None
 
-
-class TemporaryPrompt(BaseModel):
-    prompt: str
-    history: list
-
-
 class Reprompt(BaseModel):
-    sessionKey: uuid.UUID
+    sessionKey: str
     iteration: int
     newPrompt: str
+    tempHistory : dict | None = None
 
 
 class RegeneratePrompt(BaseModel):
-    sessionKey: uuid.UUID
+    sessionKey: str
     iteration: int
-
-
-class RepromptTemporary(BaseModel):
-    iteration: int
-    newPrompt: str
-    history: list
+    tempHistory : dict | None = None
 
 
 class InsertData(BaseModel):

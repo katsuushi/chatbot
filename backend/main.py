@@ -16,9 +16,7 @@ from schemas import (
     UserRead,
     UserUpdate,
     Prompt,
-    TemporaryPrompt,
     Reprompt,
-    RepromptTemporary,
     InsertData,
     RegeneratePrompt,
 )
@@ -103,7 +101,6 @@ async def promptFlashLite(
         raise HTTPException(
             status_code=422, detail="Neither tempHistory or sessionKey was inserted."
         )
-
     historyparsed = None
     current_leaf = int(schema.currentleaf[1:])
 
@@ -175,83 +172,66 @@ async def reprompt(
     user: User = Depends(current_active_verified_user),
     db: AsyncSession = Depends(get_asyncsession),
 ):
-    # Get the session
-    result = await db.execute(
-        select(Session).where(Session.sessionKey == schema.sessionKey)
-    )
-    session = result.scalar_one_or_none()
-    print("s " + str(schema.iteration))
-    if session is None:
-        raise HTTPException(
-            status_code=404, detail="Couldn't find the requested session"
+
+    if not schema.tempHistory:
+        sessionKey = uuid.UUID(schema.sessionKey)
+
+        result = await db.execute(
+            select(Session).where(Session.sessionKey == sessionKey)
         )
+        session = result.scalar_one_or_none()
+
+        if session is None:
+            raise HTTPException(
+                status_code=404, detail="Couldn't find the requested session"
+            )
+        else:
+            history = session.data
+            nodes = history["nodes"]
     else:
-        # Get the history via from session.data
-        history = session.data
+        print("TEMP DETECTED!!! OMG")
+        history = schema.tempHistory
         nodes = history["nodes"]
-        current_leaf = (
-            int(nodes[f"m{schema.iteration}"]["parent_id"][1:])
-            if nodes[f"m{schema.iteration}"]["parent_id"] != None
-            else 0
-        )
-        branch = []
-        it = schema.iteration
 
-        i = 1
-        temp = None
-        temp2 = None
+    current_leaf = (
+        int(nodes[f"m{schema.iteration}"]["parent_id"][1:])
+        if nodes[f"m{schema.iteration-1}"]["parent_id"] != None
+        else 0
+    )
+    branch = []
+    if nodes[f"m{schema.iteration}"]["parent_id"] != None:
+        branch = PartialContext(current_leaf, nodes)
+    cutbranch = branch
+    cutbranch.reverse()
+    chat = gemini_client.aio.chats.create(
+        model="gemini-3.1-flash-lite",
+        config={"system_instruction": sysinstruct},
+        history=[
+            {"role": msg["role"], "parts": [{"text": msg["text"]}]} for msg in cutbranch
+        ],
+    )
 
-        print("current_leaf: ", current_leaf)
+    response = await chat.send_message(schema.newPrompt)
 
-        if nodes[f"m{schema.iteration}"]["parent_id"] != None:
-            branch = PartialContext(current_leaf, nodes)
-        cutbranch = branch
-        print(cutbranch)
-        cutbranch.reverse()
-        print(cutbranch)
-        # return gemini_client.models.list()
-        chat = gemini_client.aio.chats.create(
-            model="gemini-3.1-flash-lite",
-            config={"system_instruction": sysinstruct},
-            history=[
-                {"role": msg["role"], "parts": [{"text": msg["text"]}]}
-                for msg in cutbranch
-            ],
-        )
+    newNodes = {
+        # Then we add the user and model node from this prompt
+        f"m{str(len(nodes))}": {
+            "parent_id": nodes[f"m{schema.iteration}"]["parent_id"],
+            "role": "user",
+            "text": schema.newPrompt,
+        },
+        f"m{str(len(nodes)+1)}": {
+            "parent_id": f"m{str(len(nodes))}",
+            "role": "model",
+            "text": response.text,
+        },
+    }
 
-        response = await chat.send_message(schema.newPrompt)
-
-        newNodes = {
-            # Then we add the user and model node from this prompt
-            f"m{str(len(nodes))}": {
-                "parent_id": nodes[f"m{schema.iteration}"]["parent_id"],
-                "role": "user",
-                "text": schema.newPrompt,
-            },
-            f"m{str(len(nodes)+1)}": {
-                "parent_id": f"m{str(len(nodes))}",
-                "role": "model",
-                "text": response.text,
-            },
-        }
-
-        session.data = {
-            # We add all previous nodes
-            "current_leaf": f"m{str(len(nodes) + 1)}",
-            "nodes": {
-                node: {
-                    "parent_id": nodes[node]["parent_id"],
-                    "role": nodes[node]["role"],
-                    "text": nodes[node]["text"],
-                }
-                for node in nodes
-            }
-            | newNodes,
-        }
-
+    if not schema.tempHistory:
+        session.data = UpdateHistory(nodes, newNodes)
         await db.commit()
 
-        return newNodes
+    return newNodes
 
 
 @app.post("/api/RegeneratePrompt")
@@ -260,72 +240,58 @@ async def RegeneratePrompt(
     user: User = Depends(current_active_verified_user),
     db: AsyncSession = Depends(get_asyncsession),
 ):
-    result = await db.execute(
-        select(Session).where(Session.sessionKey == schema.sessionKey)
-    )
-    session = result.scalar_one_or_none()
-    if session is None:
-        raise HTTPException(
-            status_code=404, detail="Couldn't find the requested session."
+
+    if not schema.tempHistory:
+        sessionKey = uuid.UUID(schema.sessionKey)
+        result = await db.execute(
+            select(Session).where(Session.sessionKey == sessionKey)
         )
-    else:
+        session = result.scalar_one_or_none()
+        if session is None:
+            raise HTTPException(
+                status_code=404, detail="Couldn't find the requested session."
+            )
         history = session.data
-        nodes = history["nodes"]
-        prompt = nodes[f"m{schema.iteration-1}"]["text"]
-        current_leaf = (
-            int(nodes[f"m{schema.iteration-1}"]["parent_id"][1:])
-            if nodes[f"m{schema.iteration}"]["parent_id"] != None
-            else 0
-        )
-        branch = []
-        it = schema.iteration
+    else:
+        history = schema.tempHistory
 
-        print("current_leaf: ", current_leaf)
+    nodes = history["nodes"]
+    prompt = nodes[f"m{schema.iteration-1}"]["text"]
+    current_leaf = (
+        int(nodes[f"m{schema.iteration-1}"]["parent_id"][1:])
+        if nodes[f"m{schema.iteration-1}"]["parent_id"] != None
+        else 0
+    )
 
-        if nodes[f"m{schema.iteration}"]["parent_id"] != None:
+    if nodes[f"m{schema.iteration}"]["parent_id"] != None:
+        branch = PartialContext(current_leaf, nodes)
 
-            branch = PartialContext(current_leaf, nodes)
+    cutbranch = branch
+    cutbranch.reverse()
+    chat = gemini_client.aio.chats.create(
+        model="gemini-3.1-flash-lite",
+        config={"system_instruction": sysinstruct},
+        history=[
+            {"role": msg["role"], "parts": [{"text": msg["text"]}]} for msg in cutbranch
+        ],
+    )
 
-        cutbranch = branch
-        cutbranch.reverse()
-        chat = gemini_client.aio.chats.create(
-            model="gemini-3.1-flash-lite",
-            config={"system_instruction": sysinstruct},
-            history=[
-                {"role": msg["role"], "parts": [{"text": msg["text"]}]}
-                for msg in cutbranch
-            ],
-        )
+    response = await chat.send_message(prompt)
 
-        response = await chat.send_message(prompt)
-
-        newNode = {
-            f"m{str(len(nodes))}": {
-                "parent_id": f"{nodes[f"m{schema.iteration}"]["parent_id"]}",
-                "role": "model",
-                "text": response.text,
-            },
-        }
-
-        session.data = {
-            # We add all previous nodes
-            "current_leaf": f"m{str(len(nodes))}",
-            "nodes": {
-                node: {
-                    "parent_id": nodes[node]["parent_id"],
-                    "role": nodes[node]["role"],
-                    "text": nodes[node]["text"],
-                }
-                for node in nodes
-            }
-            | newNode,
-        }
-
+    newNode = {
+        f"m{str(len(nodes))}": {
+            "parent_id": f"{nodes[f"m{schema.iteration}"]["parent_id"]}",
+            "role": "model",
+            "text": response.text,
+        },
+    }
+    if not schema.tempHistory:
+        session.data = UpdateHistory(nodes, newNode)
         await db.commit()
 
-        return newNode
+    return newNode
 
-        # Due to the similarity of this route and the reprompt I'll probably merge them into one later.
+    # Due to the similarity of this route and the reprompt I'll probably merge them into one later.
 
 
 @app.get("/api/loadSession")
@@ -396,8 +362,7 @@ async def getUserSessions(
     sessions = []
     # return rows
     for i in rows:
-
-        sessions.append({"sKey": i.sessionKey, "sName": i.sessionName})
+        sessions.insert(0, {"sKey": i.sessionKey, "sName": i.sessionName})
     return sessions
 
 

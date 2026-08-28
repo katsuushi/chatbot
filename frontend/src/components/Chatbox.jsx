@@ -20,6 +20,7 @@ function Chatbox({
 
     const [tempHistory, setTempHistory] = useState({ current_leaf: "m-1", nodes: {} });
     const [tempResponses, setTempResponses] = useState([])
+    const [tempBranches, setTempBranches] = useState({})
 
     const [leftbar, setLeftbar] = useState(false);
     const [prevResponses, setPrevResponses] = useState([]);
@@ -39,7 +40,7 @@ function Chatbox({
     }
 
     function debug1() {
-        console.log(responses.at(-1)["rnode"]);
+        console.log(tempHistory);
     }
 
     function debug2() {
@@ -134,7 +135,14 @@ function Chatbox({
     }
 
     function handleTempMessage(prompt) {
-        setResponses((pr) => [...pr, { prompt: prompt, response: "01000011" }])
+        // Responsible for displaying the message while waiting for the prompt
+        if (sessionKey != "temp") {
+            setResponses((pr) => [...pr, { prompt: prompt, response: "01000011" }])
+
+        } else {
+            setTempResponses((pr) => [...pr, { prompt: prompt, response: "01000011" }])
+
+        }
     }
 
 
@@ -153,26 +161,28 @@ function Chatbox({
 
     // Session loading / organizing functions
     function organizeBranches() {
-        const ref = sessionHistory.nodes // reference 
-        console.log(sessionHistory)
-        console.log(ref)
+        const ref = (sessionKey != "temp" ? sessionHistory.nodes : tempHistory.nodes) // reference 
         setNodeCount(Object.keys(ref).length)
         let branches = {}
         for (let i = 0; i <= Object.keys(ref).length - 1; i++) {
             const parent = ref[`m${i}`]["parent_id"]
             branches[parent] = [...(branches[parent] ?? []), `m${i}`];
         }
-        // 
-        setBranches(branches)
+
+        sessionKey != "temp" ? setBranches(branches) : setTempBranches(branches)
     }
 
     async function loadSession() {
 
         setLoading(true);
+        setNodeCount(0)
         setPrevResponses(responses);
         setBranches({})
         setResponses([]);
         setTempHistory({ current_leaf: "m-1", nodes: {} })
+        setTempResponses([])
+        setTempBranches({})
+
 
         if (
             sessionKey == "new" ||
@@ -275,70 +285,73 @@ function Chatbox({
 
     async function handleReprompt(dialogdata) {
         // dialogdata contains the id (number of the messages' place in the conversation) and the new prompt
+        let temporary = false;
+        let old;
+        let postLength;
+
         if (dialogdata.newPrompt === "") {
             throw new Error("Field cannot be empty")
         }
 
-        if (sessionKey != "temp") {
-            // Creating an artificial history to cover up for the api response delay
-            const old = sessionHistory.nodes
-            const postLength = Object.keys(sessionHistory.nodes).length
+        // Creating an artificial history to cover up for the api response delay
+        if (regex.test(sessionKey)) {
+            old = sessionHistory.nodes
+            postLength = Object.keys(sessionHistory.nodes).length
             setSessionHistory({ "current_leaf": `m${nodeCount + 1}`, "nodes": { ...old, [`m${postLength}`]: { parent_id: sessionHistory.nodes[`m${dialogdata.nodeNumber}`]["parent_id"], role: "user", text: dialogdata.newPrompt }, [`m${postLength + 1}`]: { parent_id: `m${postLength}`, role: "model", text: "01000011" } } })
+        } else {
+            temporary = true
+            old = tempHistory.nodes
+            postLength = Object.keys(tempHistory.nodes).length
+            setTempHistory({ "current_leaf": `m${postLength + 1}`, "nodes": { ...old, [`m${postLength}`]: { parent_id: tempHistory.nodes[`m${dialogdata.nodeNumber}`]["parent_id"], role: "user", text: dialogdata.newPrompt }, [`m${postLength + 1}`]: { parent_id: `m${postLength}`, role: "model", text: "01000011" } } })
 
-            const call = await fetch("http://localhost:8000/api/reprompt", {
-                method: "POST",
-                credentials: "include",
-                headers: {
-                    "Content-type": "application/json"
-                },
-                body: JSON.stringify({
-                    "sessionKey": sessionKey,
-                    "iteration": dialogdata.nodeNumber,
-                    "newPrompt": dialogdata.newPrompt
-                })
+        }
+
+        const call = await fetch("http://localhost:8000/api/reprompt", {
+            method: "POST",
+            credentials: "include",
+            headers: {
+                "Content-type": "application/json"
+            },
+            body: JSON.stringify({
+                "sessionKey": sessionKey,
+                "iteration": dialogdata.nodeNumber,
+                "newPrompt": dialogdata.newPrompt,
+                "tempHistory": (sessionKey == "temp" ? tempHistory : null)
             })
-            if (call.ok) {
-                const res = await call.json()
+        })
+        if (call.ok) {
+            const res = await call.json()
+            console.log(res)
+            if (!temporary) {
                 setSessionHistory({ "current_leaf": `m${nodeCount + 1}`, "nodes": { ...old, ...res } })
                 setNodeCount(nodeCount + 2)
                 organizeBranches()
-            }
-        }
 
-        else {
-            const newBranch = tempHistory.slice(0, dialogdata.Iteration)
-            setTempHistory([
-                ...newBranch, { "prompt": dialogdata.newPrompt, "response": "01000011" }
-            ])
-            const call = await fetch("http://localhost:8000/api/repromptTemporary", {
-                method: "POST",
-                credentials: "include",
-                headers: {
-                    "Content-type": "application/json"
-                },
-                body: JSON.stringify({
-                    "iteration": dialogdata.Iteration,
-                    "newPrompt": dialogdata.newPrompt,
-                    "history": tempHistory
-                }),
-            })
-            if (call.ok) {
-                const res = await call.json()
-                setTempHistory(res)
-            }
-            else {
-                const res = await call.json()
-            }
+            } else {
+                setTempHistory({ "current_leaf": `m${postLength + 1}`, "nodes": { ...old, ...res } })
+                setNodeCount(nodeCount + 2)
 
+                organizeBranches()
+            }
         }
     }
 
 
+
     async function handleRetry(iteration) {
-        const old = sessionHistory.nodes
-        console.log(iteration)
-        const postLength = Object.keys(sessionHistory.nodes).length
-        setSessionHistory({ "current_leaf": `m${nodeCount}`, "nodes": { ...old, [`m${postLength}`]: { parent_id: `${old[iteration]["parent_id"]}`, role: "model", text: "01000011" } } })
+        let temporary = false;
+        let old;
+        let postLength;
+        if (sessionKey != "temp") {
+            old = sessionHistory.nodes
+            postLength = Object.keys(sessionHistory.nodes).length
+            setSessionHistory({ "current_leaf": `m${nodeCount}`, "nodes": { ...old, [`m${postLength}`]: { parent_id: `${old[iteration]["parent_id"]}`, role: "model", text: "01000011" } } })
+        } else {
+            temporary = true;
+            old = tempHistory.nodes
+            postLength = Object.keys(tempHistory.nodes).length
+            setTempHistory({ "current_leaf": `m${postLength}`, "nodes": { ...old, [`m${postLength}`]: { parent_id: `${old[iteration]["parent_id"]}`, role: "model", text: "01000011" } } })
+        }
 
         const call = await fetch("http://localhost:8000/api/RegeneratePrompt", {
             method: "POST",
@@ -348,18 +361,25 @@ function Chatbox({
             },
             body: JSON.stringify({
                 sessionKey: sessionKey,
-                iteration: Number(iteration.slice(1))
+                iteration: Number(iteration.slice(1)),
+                tempHistory: (sessionKey == "temp" ? tempHistory : null)
             })
         })
         const res = await call.json()
-        console.log(res)
-        setSessionHistory({ "current_leaf": `m${nodeCount}`, "nodes": { ...old, ...res } })
-        setNodeCount(nodeCount + 1)
-        organizeBranches()
+        if (!temporary) {
+            setSessionHistory({ "current_leaf": `m${nodeCount}`, "nodes": { ...old, ...res } })
+            setNodeCount(nodeCount + 1)
+            organizeBranches()
+        } else {
+            setTempHistory({ "current_leaf": `m${postLength}`, "nodes": { ...old, ...res } })
+            setNodeCount(nodeCount + 1)
+
+            organizeBranches()
+        }
     }
 
     function onBranchChange(value) {
-        setSessionHistory({ ...sessionHistory, current_leaf: value })
+        sessionKey != "temp" ? setSessionHistory({ ...sessionHistory, current_leaf: value }) : setTempHistory({ ...tempHistory, current_leaf: value })
     }
 
     function ChangeSession(key) {
@@ -378,13 +398,13 @@ function Chatbox({
 
     useEffect(() => {
         organizeBranches()
-    }, [sessionHistory.nodes])
+    }, [sessionHistory.nodes, tempHistory.nodes])
 
     // This useEffect is responsible for generating the current branch - or what we see on the site
     useEffect(() => {
         generateBranch()
 
-    }, [nodeCount, sessionHistory.nodes, sessionHistory.current_leaf, tempHistory.nodes])
+    }, [sessionHistory.nodes, sessionHistory.current_leaf, tempHistory.nodes, tempHistory.current_leaf])
 
     return (
         <div className="bg-[#202020] w-full min-h-[100dvh] text-white flex flex-col items-center justify-between text-2xl">
@@ -435,10 +455,11 @@ function Chatbox({
                 ) : sessionKey === "temp" & (tempResponses.length != 0) ? (
                     tempResponses.map(
                         (res, i) => (
-
+                            console.log("res check"),
+                            console.log(res),
                             <div key={i}>
-                                <UserResponseBox iteration={i} responseid={res.pnode ? Number(res.pnode.slice(1)) : i} text={res.prompt} branches={res.ppid in branches && branches[res.ppid]} branchChange={onBranchChange} repromptCall={handleReprompt} name={res.pnode} />
-                                <LLmResponseBox text={res.response} branches={res.rpid in branches && branches[res.rpid]} branchChange={onBranchChange} retryTrigger={handleRetry} nodeInfo={res.rnode} />
+                                <UserResponseBox iteration={i} responseid={res.pnode ? Number(res.pnode.slice(1)) : i} text={res.prompt} branches={res.ppid in tempBranches && tempBranches[res.ppid]} branchChange={onBranchChange} repromptCall={handleReprompt} name={res.pnode} />
+                                <LLmResponseBox text={res.response} branches={res.rpid in tempBranches && tempBranches[res.rpid]} branchChange={onBranchChange} retryTrigger={handleRetry} nodeInfo={res.rnode} />
 
                             </div>
                         ),

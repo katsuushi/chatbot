@@ -48,7 +48,7 @@ function Leftbar({
             credentials: "include",
         });
         const res = await call.json();
-        setSessions(res.reverse());
+        setSessions(res);
     }
 
     async function getUserInfo() {

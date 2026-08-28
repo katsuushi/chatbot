@@ -50,14 +50,14 @@ function UserResponseBox({ iteration, responseid, text, repromptCall, branches, 
 
 
     useEffect(() => {
-        if (!name) {
-            console.log("Name isn't initalized")
-        } else {
-        const index = branches.indexOf(name)
-        setActiveBranch(index)
+        if (name) {
+            const index = branches.indexOf(name)
+            setActiveBranch(index)
         }
     }, [branches.length])
 
+    console.log(name + " (prompt) has below")
+    console.log(branches)
 
     return (
         <div className="ml-auto max-w-full md:max-w-[66%]   my-2 ">

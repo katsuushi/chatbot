@@ -37,13 +37,15 @@ function LLmResponseBox({ text, branches, branchChange, retryTrigger, nodeInfo }
     }
 
     useEffect(() => {
-        if (!nodeInfo) {
-            console.log("Name (res) isn't initalized")
-        } else {
-        const index = branches.indexOf(nodeInfo)
-        setActiveBranch(index)
+        if (nodeInfo) {
+            const index = branches.indexOf(nodeInfo)
+            setActiveBranch(index)
         }
     }, [branches.length])
+
+    console.log(nodeInfo + " (llm) has below")
+    console.log(branches)
+    console.log("activeBranch: ", activeBranch)
 
     return (
         <div className="w-full mt-8">
