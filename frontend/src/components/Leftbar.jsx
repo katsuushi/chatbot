@@ -18,13 +18,10 @@ function Leftbar({
     const [searchToggle, setSearchToggle] = useState(false);
     const { setLoadFn } = useContext(SessionContext);
     function handleSwitch(data) {
-        console.log(sessions);
-        console.log("sessions: " + sessions);
         sessionKey(data);
     }
 
     function handleActive() {
-        console.log("handleActive Runs");
         if (active) {
             setActive();
         }
@@ -51,8 +48,7 @@ function Leftbar({
             credentials: "include",
         });
         const res = await call.json();
-        setSessions(res.reverse());
-        console.log(res);
+        setSessions(res);
     }
 
     async function getUserInfo() {

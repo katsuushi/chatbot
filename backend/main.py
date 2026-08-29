@@ -7,6 +7,7 @@ from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi_users import FastAPIUsers
 from google import genai
+from routes.DbRoutes import UpdateHistory
 from sqlalchemy import select
 
 from db import AsyncSession, Session, User, create_db_and_tables, get_asyncsession
@@ -15,9 +16,9 @@ from schemas import (
     UserRead,
     UserUpdate,
     Prompt,
-    TemporaryPrompt,
     Reprompt,
-    RepromptTemporary,
+    InsertData,
+    RegeneratePrompt,
 )
 from users import (
     cookie_backend,
@@ -27,13 +28,13 @@ from users import (
     current_active_verified_user,
 )
 import uuid
+from routes.ContextRoutes import *
+from routes.DebugRoutes import *
+from routes.ChatRoutes import *
+from routes.DbRoutes import *
 
 load_dotenv()
 gemini_key = os.getenv("GEMINI_API_KEY")
-
-sysinstruct = (
-    "You are a helpful assistant, that's designed to assist the user in its problems."
-)
 
 
 @asynccontextmanager
@@ -92,89 +93,77 @@ def pong():
 
 @app.post("/api/promptFlashLite")
 async def promptFlashLite(
-    prompt: Prompt,
-    session: uuid.UUID,
+    schema: Prompt,
     db: AsyncSession = Depends(get_asyncsession),
     user: User = Depends(current_active_verified_user),
 ):
-    print(session)
-    res = await db.execute(select(Session).where(Session.sessionKey == session))
-    rows = res.scalar_one_or_none()
-    if rows is None:
-
-        chat = gemini_client.aio.chats.create(
-            model="gemini-3.1-flash-lite",
-            config={"system_instruction": sysinstruct},
+    if not schema.tempHistory and not schema.sessionKey:
+        raise HTTPException(
+            status_code=422, detail="Neither tempHistory or sessionKey was inserted."
         )
+    historyparsed = None
+    current_leaf = int(schema.currentleaf[1:])
 
-        chatsession = Session(
-            data={"history": []},
-            sessionKey=session,
-            owner_id=user.id,
-            sessionName=prompt.prompt,
-        )
+    if not schema.tempHistory:
+        print(schema.sessionKey)
+        sessionKey = uuid.UUID(schema.sessionKey)
 
-        db.add(chatsession)
-        rows = chatsession
+        res = await db.execute(select(Session).where(Session.sessionKey == sessionKey))
+        rows = res.scalar_one_or_none()
+
+        if rows is None:
+            # Creating the session to the db
+            chatsession = Session(
+                data={"current_leaf": "m-1", "nodes": {}},
+                sessionKey=sessionKey,
+                owner_id=user.id,
+                sessionName=schema.prompt,
+            )
+            db.add(chatsession)
+            rows = chatsession
+            history = rows.data
+
+        else:
+            history = rows.data
+
+            nodes = history["nodes"]
+            historyparsed = BuildContext(nodes, current_leaf)
+
     else:
-        history = json.loads(rows.data["history"])
-        chat = gemini_client.aio.chats.create(
-            model="gemini-3.1-flash-lite",
-            config={"system_instruction": sysinstruct},
-            history=[
-                {"role": msg["role"], "parts": [{"text": msg["text"]}]}
-                for msg in history
-            ],
-        )
+        print("Detected Temporary")
+        try:
+            history = schema.tempHistory
+            nodes = history["nodes"]
+            if len(nodes) != 0:
+                historyparsed = BuildContext(nodes, current_leaf)
+                # Didn't test what happens if its empty so I play safe
+        except Exception as e:
+            print(e)
+            raise HTTPException(
+                status_code=422,
+                detail="Problem while building the context / accessing tempHistory",
+            )
+    response = await Chat(gemini_client, historyparsed, schema.prompt)
 
-    response = await chat.send_message(prompt.prompt)
+    nodes = history["nodes"]
 
-    rows.data = {
-        **rows.data,
-        "history": json.dumps(
-            [
-                {"role": msg.role, "text": msg.parts[0].text}
-                for msg in chat.get_history()
-            ]
-        ),
+    newNodes = {
+        # Then we add the user and model node from this prompt
+        f"m{str(len(nodes))}": {
+            "parent_id": (f"{schema.currentleaf}" if len(nodes) != 0 else None),
+            "role": "user",
+            "text": schema.prompt,
+        },
+        f"m{str(len(nodes)+1)}": {
+            "parent_id": f"m{str(len(nodes))}",
+            "role": "model",
+            "text": response,
+        },
     }
-
-    await db.commit()
-    return response.text
-
-
-@app.post("/api/promptTemporary")
-async def promptTemporary(
-    schema: TemporaryPrompt,
-    db: AsyncSession = Depends(get_asyncsession),
-    user: User = Depends(current_active_verified_user),
-):
-    # Because LLm handles the history dict a bit different than our frontend we convert it
-    history = []
-    for i in schema.history:
-        history.append({"role": "user", "text": i["prompt"]})
-        history.append({"role": "model", "text": i["response"]})
-
-    chat = gemini_client.aio.chats.create(
-        model="gemini-3.1-flash-lite",
-        config={"system_instruction": sysinstruct},
-        history=[
-            {"role": msg["role"], "parts": [{"text": msg["text"]}]} for msg in history
-        ],
-    )
-
-    response = await chat.send_message(schema.prompt)
-
-    # convert the history into a frontend friendly format so we don't write more code in the frontend
-    formatted = []
-    for i in range(0, len(history), 2):
-        formatted.append(
-            {"prompt": history[i]["text"], "response": history[i + 1]["text"]}
-        )
-
-    formatted.append({"prompt": schema.prompt, "response": response.text})
-
-    return response.text
+    if not schema.tempHistory:
+        rows.data = UpdateHistory(nodes, newNodes)
+        await db.commit()
+    return newNodes
 
 
 @app.post("/api/reprompt")
@@ -183,102 +172,126 @@ async def reprompt(
     user: User = Depends(current_active_verified_user),
     db: AsyncSession = Depends(get_asyncsession),
 ):
-    # Get the session
-    result = await db.execute(
-        select(Session).where(Session.sessionKey == schema.sessionKey)
-    )
-    session = result.scalar_one_or_none()
-    if session is None:
-        raise HTTPException(
-            status_code=404, detail="Couldn't find the requested session"
+
+    if not schema.tempHistory:
+        sessionKey = uuid.UUID(schema.sessionKey)
+
+        result = await db.execute(
+            select(Session).where(Session.sessionKey == sessionKey)
         )
-    else:
-        # Get the history via from session.data
-        history = json.loads(session.data["history"])
-        iteration = schema.iteration * 2
-        newBranch = history[
-            :iteration
-        ]  # newBranch is history till the requested message (it * 2 because history alternates {user}, {model})
+        session = result.scalar_one_or_none()
 
-        # Send the request with the history being newBranch
-        chat = gemini_client.aio.chats.create(
-            model="gemini-2.5-flash",
-            config={"system_instruction": sysinstruct},
-            history=[
-                {"role": msg["role"], "parts": [{"text": msg["text"]}]}
-                for msg in newBranch
-            ],
-        )
-
-        response = await chat.send_message(schema.newPrompt)
-
-        # Because chat.get_history() already returns the new branch we don't have to change anything
-        session.data = {
-            **session.data,
-            "history": json.dumps(
-                [
-                    {"role": msg.role, "text": msg.parts[0].text}
-                    for msg in chat.get_history()
-                ]
-            ),
-        }
-
-        newBranchData = json.loads(session.data["history"])
-        newBranch = []
-        for i in range(0, len(newBranchData), 2):
-            newBranch.append(
-                {
-                    "prompt": newBranchData[i]["text"],
-                    "response": newBranchData[i + 1]["text"],
-                }
+        if session is None:
+            raise HTTPException(
+                status_code=404, detail="Couldn't find the requested session"
             )
+        else:
+            history = session.data
+            nodes = history["nodes"]
+    else:
+        print("TEMP DETECTED!!! OMG")
+        history = schema.tempHistory
+        nodes = history["nodes"]
 
-        await db.commit()
-
-        return newBranch
-
-        # This WILL need some readjustments when we are going to implement multiple conversation branch support
-
-
-@app.post("/api/repromptTemporary")
-async def repromptTemporary(
-    schema: RepromptTemporary,
-    user: User = Depends(current_active_verified_user),
-):
-    history = schema.history
-    iteration = (
-        schema.iteration
-    )  # Due to how frontend handles the sessions' conversation array we don't need to multiply by 2
-    newBranch = history[:iteration]
-
-    print(history)
-
-    # Because LLm handles the history dict a bit different than our frontend we convert it
-    history = []
-    for i in newBranch:
-        history.append({"role": "user", "text": i["prompt"]})
-        history.append({"role": "model", "text": i["response"]})
-
+    current_leaf = (
+        int(nodes[f"m{schema.iteration}"]["parent_id"][1:])
+        if nodes[f"m{schema.iteration}"]["parent_id"] != None
+        else 0
+    )
+    branch = []
+    if nodes[f"m{schema.iteration}"]["parent_id"] != None:
+        branch = PartialContext(current_leaf, nodes)
+    cutbranch = branch
+    cutbranch.reverse()
     chat = gemini_client.aio.chats.create(
         model="gemini-3.1-flash-lite",
         config={"system_instruction": sysinstruct},
         history=[
-            {"role": msg["role"], "parts": [{"text": msg["text"]}]} for msg in history
+            {"role": msg["role"], "parts": [{"text": msg["text"]}]} for msg in cutbranch
         ],
     )
 
     response = await chat.send_message(schema.newPrompt)
 
-    # we can now convert it into a frontend friendly format so we don't write more code in the frontend
-    newBranch = []
-    for i in range(0, len(history), 2):
-        newBranch.append(
-            {"prompt": history[i]["text"], "response": history[i + 1]["text"]}
+    newNodes = {
+        # Then we add the user and model node from this prompt
+        f"m{str(len(nodes))}": {
+            "parent_id": nodes[f"m{schema.iteration}"]["parent_id"],
+            "role": "user",
+            "text": schema.newPrompt,
+        },
+        f"m{str(len(nodes)+1)}": {
+            "parent_id": f"m{str(len(nodes))}",
+            "role": "model",
+            "text": response.text,
+        },
+    }
+
+    if not schema.tempHistory:
+        session.data = UpdateHistory(nodes, newNodes)
+        await db.commit()
+
+    return newNodes
+
+
+@app.post("/api/RegeneratePrompt")
+async def RegeneratePrompt(
+    schema: RegeneratePrompt,
+    user: User = Depends(current_active_verified_user),
+    db: AsyncSession = Depends(get_asyncsession),
+):
+
+    if not schema.tempHistory:
+        sessionKey = uuid.UUID(schema.sessionKey)
+        result = await db.execute(
+            select(Session).where(Session.sessionKey == sessionKey)
         )
+        session = result.scalar_one_or_none()
+        if session is None:
+            raise HTTPException(
+                status_code=404, detail="Couldn't find the requested session."
+            )
+        history = session.data
+    else:
+        history = schema.tempHistory
 
-    newBranch.append({"prompt": schema.newPrompt, "response": response.text})
+    nodes = history["nodes"]
+    prompt = nodes[f"m{schema.iteration-1}"]["text"]
+    current_leaf = (
+        int(nodes[f"m{schema.iteration-1}"]["parent_id"][1:])
+        if nodes[f"m{schema.iteration-1}"]["parent_id"] != None
+        else 0
+    )
 
-    return newBranch
+    if nodes[f"m{schema.iteration}"]["parent_id"] != None:
+        branch = PartialContext(current_leaf, nodes)
+
+    cutbranch = branch
+    cutbranch.reverse()
+    chat = gemini_client.aio.chats.create(
+        model="gemini-3.1-flash-lite",
+        config={"system_instruction": sysinstruct},
+        history=[
+            {"role": msg["role"], "parts": [{"text": msg["text"]}]} for msg in cutbranch
+        ],
+    )
+
+    response = await chat.send_message(prompt)
+
+    newNode = {
+        f"m{str(len(nodes))}": {
+            "parent_id": f"{nodes[f"m{schema.iteration}"]["parent_id"]}",
+            "role": "model",
+            "text": response.text,
+        },
+    }
+    if not schema.tempHistory:
+        session.data = UpdateHistory(nodes, newNode)
+        await db.commit()
+
+    return newNode
+
+    # Due to the similarity of this route and the reprompt I'll probably merge them into one later.
 
 
 @app.get("/api/loadSession")
@@ -298,8 +311,7 @@ async def loadSession(
             status_code=403, detail="You are not the owner of the session."
         )
     else:
-        history = json.loads(row.data["history"])
-        return history
+        return row.data
 
 
 @app.delete("/api/deleteSession")
@@ -350,8 +362,7 @@ async def getUserSessions(
     sessions = []
     # return rows
     for i in rows:
-
-        sessions.append({"sKey": i.sessionKey, "sName": i.sessionName})
+        sessions.insert(0, {"sKey": i.sessionKey, "sName": i.sessionName})
     return sessions
 
 
@@ -373,6 +384,18 @@ async def searchSessions(
     return data
 
 
-@app.get("/api/testUser")
+@app.put("/debug/insertDataToASession")
+async def insertDataToASession(
+    schema: InsertData, session: uuid.UUID, db: AsyncSession = Depends(get_asyncsession)
+):
+    res = await db.execute(select(Session).where(Session.sessionKey == session))
+    row = res.scalar_one_or_none()
+    row.data = schema.data
+
+    await db.commit()
+    return row.data
+
+
+@app.get("/debug/testUser")
 async def testUser(user: User = Depends(current_active_verified_user)):
     return {"message": "Data", "username": user.email, "id": user.id}
