@@ -150,7 +150,7 @@ async def promptFlashLite(
     newNodes = {
         # Then we add the user and model node from this prompt
         f"m{str(len(nodes))}": {
-            "parent_id": (f"m{str(len(nodes)-1)}" if len(nodes) != 0 else None),
+            "parent_id": (f"{schema.currentleaf}" if len(nodes) != 0 else None),
             "role": "user",
             "text": schema.prompt,
         },
@@ -195,7 +195,7 @@ async def reprompt(
 
     current_leaf = (
         int(nodes[f"m{schema.iteration}"]["parent_id"][1:])
-        if nodes[f"m{schema.iteration-1}"]["parent_id"] != None
+        if nodes[f"m{schema.iteration}"]["parent_id"] != None
         else 0
     )
     branch = []

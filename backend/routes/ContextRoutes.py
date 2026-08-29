@@ -22,15 +22,14 @@ def BuildContext(nodes, current_leaf):
     for i in range(current_leaf, -1, -1):
         if (
             i == s_node
-            or nodes[f"m{i}"]["parent_id"][1:] == None
-            and nodes[f"m{i}"]["parent_id"] == "m0"
-            or i == current_leaf
         ):
             node = {
                 "role": nodes[f"m{i}"]["role"],
                 "parts": [{"text": nodes[f"m{i}"]["text"]}],
             }
             llmhistoryparsed.append(node)
+            if nodes[f"m{i}"]["parent_id"] == None:
+                break
             if i != 0:
                 s_node = int(nodes[f"m{i}"]["parent_id"][1:])
         else:
@@ -55,7 +54,6 @@ def PartialContext(current_leaf, nodes):
                 break
             if j != 0:
                 s_node = int(nodes[f"m{j}"]["parent_id"][1:])
-
         else:
             continue
     return branch
